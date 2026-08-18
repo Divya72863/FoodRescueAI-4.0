@@ -3,7 +3,6 @@ import pandas as pd
 
 from ai_engine import analyze_donation
 from ngo_data import recommend_ngo
-
 from database import (
     create_database,
     add_donation,
@@ -11,11 +10,21 @@ from database import (
     mark_delivered
 )
 
+
+# ============================================================
+# PAGE CONFIGURATION
+# ============================================================
+
 st.set_page_config(
     page_title="Food Rescue AI 4.0",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+
+# ============================================================
+# DATABASE
+# ============================================================
 
 create_database()
 
@@ -27,8 +36,6 @@ create_database()
 st.markdown("""
 <style>
 
-/* ---------------- GLOBAL ---------------- */
-
 .stApp {
     background-color: #F7FAF8;
 }
@@ -39,8 +46,7 @@ st.markdown("""
     max-width: 1400px;
 }
 
-
-/* ---------------- SIDEBAR ---------------- */
+/* SIDEBAR */
 
 section[data-testid="stSidebar"] {
     background-color: #0B3D2E;
@@ -58,45 +64,38 @@ section[data-testid="stSidebar"] * {
 .sidebar-title {
     font-size: 22px;
     font-weight: 700;
-    color: white;
 }
 
 .sidebar-subtitle {
     font-size: 12px;
-    color: #D5E8DE;
+    color: #D5E8DE !important;
     margin-top: 5px;
 }
 
-
-/* ---------------- HERO ---------------- */
+/* HERO */
 
 .hero {
     background: linear-gradient(
         135deg,
-        #0B3D2E 0%,
-        #176B4D 55%,
-        #2E8B57 100%
+        #0B3D2E,
+        #176B4D,
+        #2E8B57
     );
 
     padding: 40px;
     border-radius: 22px;
     margin-bottom: 30px;
     color: white;
-
-    box-shadow:
-        0 10px 30px rgba(11, 61, 46, 0.18);
 }
 
 .hero-title {
     font-size: 42px;
     font-weight: 800;
-    letter-spacing: -1px;
 }
 
 .hero-subtitle {
     font-size: 19px;
     margin-top: 8px;
-    opacity: 0.95;
 }
 
 .hero-description {
@@ -104,11 +103,9 @@ section[data-testid="stSidebar"] * {
     margin-top: 18px;
     max-width: 800px;
     line-height: 1.6;
-    opacity: 0.85;
 }
 
-
-/* ---------------- SECTION TITLES ---------------- */
+/* SECTION */
 
 .section-title {
     font-size: 27px;
@@ -124,18 +121,14 @@ section[data-testid="stSidebar"] * {
     margin-bottom: 22px;
 }
 
-
-/* ---------------- METRIC CARDS ---------------- */
+/* METRIC */
 
 .metric-card {
     background: white;
     padding: 24px;
     border-radius: 17px;
-
     border: 1px solid #E0EAE4;
-
-    box-shadow:
-        0 5px 18px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 5px 18px rgba(0, 0, 0, 0.04);
 }
 
 .metric-label {
@@ -150,19 +143,14 @@ section[data-testid="stSidebar"] * {
     margin-top: 5px;
 }
 
-
-/* ---------------- GENERAL CARDS ---------------- */
+/* GENERAL CARD */
 
 .card {
     background: white;
     padding: 25px;
     border-radius: 18px;
-
     border: 1px solid #E1EAE5;
-
-    box-shadow:
-        0 5px 18px rgba(0, 0, 0, 0.04);
-
+    box-shadow: 0 5px 18px rgba(0, 0, 0, 0.04);
     margin-bottom: 18px;
 }
 
@@ -178,24 +166,16 @@ section[data-testid="stSidebar"] * {
     line-height: 1.7;
 }
 
-
-/* ---------------- WORKFLOW ---------------- */
+/* WORKFLOW */
 
 .workflow {
     background: white;
-
     padding: 22px 12px;
-
     border-radius: 16px;
-
     border: 1px solid #E2EBE5;
-
     text-align: center;
-
     min-height: 120px;
-
-    box-shadow:
-        0 4px 14px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
 }
 
 .workflow-title {
@@ -211,65 +191,7 @@ section[data-testid="stSidebar"] * {
     line-height: 1.4;
 }
 
-
-/* ---------------- PRIORITY ---------------- */
-
-.priority-high {
-    background: #FFF0F0;
-
-    border: 1px solid #F5C6C6;
-
-    color: #B42318;
-
-    padding: 18px;
-
-    border-radius: 14px;
-
-    text-align: center;
-
-    font-size: 20px;
-
-    font-weight: 750;
-}
-
-.priority-medium {
-    background: #FFF8E8;
-
-    border: 1px solid #F0D694;
-
-    color: #A15C00;
-
-    padding: 18px;
-
-    border-radius: 14px;
-
-    text-align: center;
-
-    font-size: 20px;
-
-    font-weight: 750;
-}
-
-.priority-low {
-    background: #ECF8F0;
-
-    border: 1px solid #B9DFC4;
-
-    color: #16743D;
-
-    padding: 18px;
-
-    border-radius: 14px;
-
-    text-align: center;
-
-    font-size: 20px;
-
-    font-weight: 750;
-}
-
-
-/* ---------------- NGO CARD ---------------- */
+/* NGO */
 
 .ngo-card {
     background: linear-gradient(
@@ -279,19 +201,14 @@ section[data-testid="stSidebar"] * {
     );
 
     border: 1px solid #CDE7D6;
-
     padding: 25px;
-
     border-radius: 18px;
-
-    min-height: 190px;
 }
 
 .ngo-name {
     font-size: 21px;
     font-weight: 750;
     color: #0B3D2E;
-    margin-bottom: 15px;
 }
 
 .ngo-detail {
@@ -300,66 +217,59 @@ section[data-testid="stSidebar"] * {
     margin-top: 9px;
 }
 
-
-/* ---------------- INFO BOX ---------------- */
+/* INFO */
 
 .info-box {
     background: #EAF6EF;
-
     border-left: 5px solid #238B57;
-
     padding: 18px;
-
     border-radius: 10px;
-
     color: #24553A;
-
     line-height: 1.6;
 }
 
+/* PRIORITY */
 
-/* ---------------- FOOTER ---------------- */
+.priority-high {
+    background: #FFF0F0;
+    border: 1px solid #F5C6C6;
+    color: #B42318;
+    padding: 18px;
+    border-radius: 14px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 750;
+}
+
+.priority-medium {
+    background: #FFF8E8;
+    border: 1px solid #F0D694;
+    color: #A15C00;
+    padding: 18px;
+    border-radius: 14px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 750;
+}
+
+.priority-low {
+    background: #ECF8F0;
+    border: 1px solid #B9DFC4;
+    color: #16743D;
+    padding: 18px;
+    border-radius: 14px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 750;
+}
+
+/* FOOTER */
 
 .footer {
     text-align: center;
-
     color: #829088;
-
     font-size: 12px;
-
     padding: 30px 0 10px 0;
-}
-
-
-/* ---------------- BUTTONS ---------------- */
-
-.stButton > button {
-
-    border-radius: 10px;
-
-    font-weight: 650;
-
-    min-height: 45px;
-
-}
-
-
-/* ---------------- INPUTS ---------------- */
-
-div[data-baseweb="input"] > div,
-div[data-baseweb="select"] > div {
-
-    border-radius: 10px;
-
-}
-
-
-/* ---------------- DATAFRAME ---------------- */
-
-[data-testid="stDataFrame"] {
-
-    border-radius: 12px;
-
 }
 
 </style>
@@ -370,19 +280,20 @@ div[data-baseweb="select"] > div {
 # SIDEBAR
 # ============================================================
 
-st.sidebar.markdown("""
-<div class="sidebar-brand">
+st.sidebar.markdown(
+    """
+    <div class="sidebar-brand">
+        <div class="sidebar-title">
+            Food Rescue AI 4.0
+        </div>
 
-<div class="sidebar-title">
-Food Rescue AI 4.0
-</div>
-
-<div class="sidebar-subtitle">
-Intelligent Food Redistribution
-</div>
-
-</div>
-""", unsafe_allow_html=True)
+        <div class="sidebar-subtitle">
+            Intelligent Food Redistribution
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 st.sidebar.divider()
 
@@ -398,41 +309,38 @@ page = st.sidebar.radio(
 
 st.sidebar.divider()
 
-st.sidebar.markdown(
-    "**Prototype**\n\n"
+st.sidebar.write(
+    "Prototype\n\n"
     "AI-powered coordination for surplus food rescue."
 )
 
 
 # ============================================================
-# GET DONATION DATA
+# HERO
 # ============================================================
 
-donations = get_donations()
+st.markdown(
+    """
+    <div class="hero">
 
+        <div class="hero-title">
+            FOOD RESCUE AI 4.0
+        </div>
 
-# ============================================================
-# HERO SECTION
-# ============================================================
+        <div class="hero-subtitle">
+            AI-Powered Food Rescue & Redistribution Platform
+        </div>
 
-st.markdown("""
-<div class="hero">
+        <div class="hero-description">
+            Connecting surplus food with organizations in need
+            through intelligent prioritization, smart NGO matching
+            and delivery tracking.
+        </div>
 
-<div class="hero-title">
-FOOD RESCUE AI 4.0
-</div>
-
-<div class="hero-subtitle">
-AI-Powered Food Rescue & Redistribution Platform
-</div>
-
-<div class="hero-description">
-Connecting surplus food with organizations in need through
-intelligent prioritization, smart NGO matching and delivery tracking.
-</div>
-
-</div>
-""", unsafe_allow_html=True)
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 
 # ============================================================
@@ -453,7 +361,7 @@ if page == "Dashboard":
         unsafe_allow_html=True
     )
 
-    # Calculate metrics
+    donations = get_donations()
 
     total_meals = sum(
         donation[2]
@@ -474,15 +382,15 @@ if page == "Dashboard":
 
     total_donations = len(donations)
 
-    # Metric cards
+    # ---------------- METRICS ----------------
 
     c1, c2, c3, c4 = st.columns(4)
 
     metrics = [
         ("Meals Rescued", total_meals),
-        ("Deliveries", delivered),
-        ("Total Donations", total_donations),
-        ("Pending Pickup", pending)
+        ("Successful Deliveries", delivered),
+        ("Food Donations", total_donations),
+        ("Pending Pickups", pending)
     ]
 
     for col, (label, value) in zip(
@@ -511,10 +419,12 @@ if page == "Dashboard":
 
     st.write("")
 
-    # Workflow
+    # ---------------- WORKFLOW ----------------
 
     st.markdown(
-        '<div class="section-title">How the Platform Works</div>',
+        '<div class="section-title">'
+        'How the Platform Works'
+        '</div>',
         unsafe_allow_html=True
     )
 
@@ -527,16 +437,16 @@ if page == "Dashboard":
 
     workflow = [
         ("Donate", "Enter surplus food details"),
-        ("AI Analyze", "Estimate pickup priority"),
-        ("Smart Match", "Recommend suitable NGO"),
-        ("Route", "Plan efficient pickup"),
+        ("AI Analyze", "Calculate donation priority"),
+        ("Smart Match", "Find a suitable NGO"),
+        ("Route", "Plan pickup efficiently"),
         ("Track", "Monitor delivery status"),
-        ("Impact", "Measure rescued food")
+        ("Impact", "Measure food rescued")
     ]
 
     cols = st.columns(6)
 
-    for col, (title, text) in zip(
+    for col, (title, description) in zip(
         cols,
         workflow
     ):
@@ -552,7 +462,7 @@ if page == "Dashboard":
                     </div>
 
                     <div class="workflow-text">
-                        {text}
+                        {description}
                     </div>
 
                 </div>
@@ -562,10 +472,12 @@ if page == "Dashboard":
 
     st.write("")
 
-    # Recent donations
+    # ---------------- RECENT DONATIONS ----------------
 
     st.markdown(
-        '<div class="section-title">Recent Donations</div>',
+        '<div class="section-title">'
+        'Recent Donations'
+        '</div>',
         unsafe_allow_html=True
     )
 
@@ -593,36 +505,26 @@ if page == "Dashboard":
 
     else:
 
-        st.markdown(
-            """
-            <div class="card">
-
-                <div class="card-title">
-                    No Donations Yet
-                </div>
-
-                <div class="card-text">
-                    Create your first donation from the
-                    New Donation section to see the system
-                    in action.
-                </div>
-
-            </div>
-            """,
-            unsafe_allow_html=True
+        st.info(
+            "No donations have been created yet."
         )
 
     st.write("")
+
+    # ---------------- MISSION ----------------
 
     st.markdown(
         """
         <div class="info-box">
 
-        <b>Our Mission</b><br><br>
+            <b>Our Mission</b>
 
-        Food should reach people, not landfills.
-        Food Rescue AI 4.0 uses intelligent coordination
-        to help surplus food reach organizations that need it.
+            <br><br>
+
+            Food should reach people, not landfills.
+            Food Rescue AI 4.0 connects surplus food with
+            organizations that need it using intelligent
+            prioritization, NGO matching and delivery tracking.
 
         </div>
         """,
@@ -637,7 +539,9 @@ if page == "Dashboard":
 elif page == "New Donation":
 
     st.markdown(
-        '<div class="section-title">Create a Food Donation</div>',
+        '<div class="section-title">'
+        'Create a Food Donation'
+        '</div>',
         unsafe_allow_html=True
     )
 
@@ -652,10 +556,6 @@ elif page == "New Donation":
         [1.35, 1],
         gap="large"
     )
-
-    # --------------------------------------------------------
-    # FORM
-    # --------------------------------------------------------
 
     with left:
 
@@ -710,10 +610,6 @@ elif page == "New Donation":
             use_container_width=True
         )
 
-    # --------------------------------------------------------
-    # EXPLANATION CARD
-    # --------------------------------------------------------
-
     with right:
 
         st.markdown(
@@ -753,9 +649,7 @@ elif page == "New Donation":
             unsafe_allow_html=True
         )
 
-    # ========================================================
-    # ANALYSIS
-    # ========================================================
+    # ---------------- ANALYZE ----------------
 
     if analyze_button:
 
@@ -774,24 +668,28 @@ elif page == "New Donation":
                 storage_condition
             )
 
-            recommended_ngo, alternatives = (
-                recommend_ngo(quantity)
-            )
+            result = recommend_ngo()
+
+            if isinstance(result, tuple):
+
+                recommended_ngo = result[0]
+                alternatives = result[1]
+
+            else:
+
+                recommended_ngo = result
+                alternatives = []
 
             st.session_state["analysis"] = analysis
             st.session_state["ngo"] = recommended_ngo
             st.session_state["alternatives"] = alternatives
 
-    # ========================================================
-    # DISPLAY ANALYSIS
-    # ========================================================
+    # ---------------- RESULT ----------------
 
     if "analysis" in st.session_state:
 
         analysis = st.session_state["analysis"]
-
         recommended_ngo = st.session_state["ngo"]
-
         alternatives = st.session_state["alternatives"]
 
         st.divider()
@@ -805,37 +703,34 @@ elif page == "New Donation":
 
         st.markdown(
             '<div class="section-subtitle">'
-            'Explainable prototype decision engine'
+            'Explainable prototype decision engine.'
             '</div>',
             unsafe_allow_html=True
         )
 
-        # Score cards
-
         c1, c2, c3 = st.columns(3)
 
         with c1:
-
             st.metric(
                 "AI Priority",
                 analysis["priority"]
             )
 
         with c2:
-
             st.metric(
                 "Decision Score",
                 analysis["score"]
             )
 
         with c3:
-
             st.metric(
                 "Recommended NGO",
                 recommended_ngo["name"]
             )
 
-        # Priority display
+        st.write("")
+
+        # Priority
 
         if analysis["priority"] == "HIGH":
 
@@ -848,7 +743,7 @@ elif page == "New Donation":
                     <br>
 
                     <span style="font-size:14px;">
-                    Arrange pickup immediately
+                        Arrange pickup immediately
                     </span>
 
                 </div>
@@ -867,7 +762,7 @@ elif page == "New Donation":
                     <br>
 
                     <span style="font-size:14px;">
-                    Arrange pickup soon
+                        Arrange pickup soon
                     </span>
 
                 </div>
@@ -886,7 +781,7 @@ elif page == "New Donation":
                     <br>
 
                     <span style="font-size:14px;">
-                    Pickup can be scheduled
+                        Pickup can be scheduled
                     </span>
 
                 </div>
@@ -896,12 +791,7 @@ elif page == "New Donation":
 
         st.write("")
 
-        # Reason and NGO
-
-        c1, c2 = st.columns(
-            2,
-            gap="large"
-        )
+        c1, c2 = st.columns(2)
 
         with c1:
 
@@ -924,10 +814,6 @@ elif page == "New Donation":
                     "• " + reason
                 )
 
-            st.info(
-                analysis["recommendation"]
-            )
-
         with c2:
 
             st.markdown(
@@ -937,6 +823,8 @@ elif page == "New Donation":
                     <div class="ngo-name">
                         Recommended NGO
                     </div>
+
+                    <br>
 
                     <div class="ngo-name">
                         {recommended_ngo["name"]}
@@ -964,24 +852,28 @@ elif page == "New Donation":
 
         st.write("")
 
-        # Alternatives
-
         with st.expander(
             "View Alternative NGO Matches"
         ):
 
-            for ngo in alternatives:
+            if alternatives:
+
+                for ngo in alternatives:
+
+                    st.write(
+                        f"{ngo['name']} | "
+                        f"{ngo['distance']} km | "
+                        f"Need: {ngo['need']} | "
+                        f"Capacity: {ngo['capacity']}"
+                    )
+
+            else:
 
                 st.write(
-                    f"**{ngo['name']}**  |  "
-                    f"{ngo['distance']} km  |  "
-                    f"Need: {ngo['need']}  |  "
-                    f"Capacity: {ngo['capacity']}"
+                    "No alternative matches available."
                 )
 
         st.write("")
-
-        # Confirm
 
         if st.button(
             "Confirm Donation & Assign NGO",
@@ -1002,17 +894,16 @@ elif page == "New Donation":
                 "NGO assigned and pickup is pending."
             )
 
-            # Clear analysis
-
             for key in [
                 "analysis",
                 "ngo",
                 "alternatives"
             ]:
 
-                if key in st.session_state:
-
-                    del st.session_state[key]
+                st.session_state.pop(
+                    key,
+                    None
+                )
 
 
 # ============================================================
@@ -1022,7 +913,9 @@ elif page == "New Donation":
 elif page == "Track Donations":
 
     st.markdown(
-        '<div class="section-title">Donation Tracking</div>',
+        '<div class="section-title">'
+        'Donation Tracking'
+        '</div>',
         unsafe_allow_html=True
     )
 
@@ -1052,14 +945,12 @@ elif page == "Track Donations":
         c1, c2 = st.columns(2)
 
         with c1:
-
             st.metric(
                 "Pending Pickup",
                 pending
             )
 
         with c2:
-
             st.metric(
                 "Delivered",
                 delivered
@@ -1106,7 +997,7 @@ elif page == "Track Donations":
             donation_ids
         )
 
-        selected_donation = next(
+        selected = next(
             (
                 donation
                 for donation in donations
@@ -1115,13 +1006,13 @@ elif page == "Track Donations":
             None
         )
 
-        if selected_donation:
+        if selected:
 
             st.info(
-                f"Food: {selected_donation[1]} | "
-                f"Quantity: {selected_donation[2]} | "
-                f"NGO: {selected_donation[6]} | "
-                f"Status: {selected_donation[7]}"
+                f"Food: {selected[1]} | "
+                f"Quantity: {selected[2]} | "
+                f"NGO: {selected[6]} | "
+                f"Status: {selected[7]}"
             )
 
         if st.button(
@@ -1141,22 +1032,8 @@ elif page == "Track Donations":
 
     else:
 
-        st.markdown(
-            """
-            <div class="card">
-
-                <div class="card-title">
-                    No Donations Available
-                </div>
-
-                <div class="card-text">
-                    Create a donation from the New Donation
-                    section to begin tracking.
-                </div>
-
-            </div>
-            """,
-            unsafe_allow_html=True
+        st.info(
+            "No donations available. Create a donation first."
         )
 
 
@@ -1179,8 +1056,6 @@ elif page == "AI & Technology":
         '</div>',
         unsafe_allow_html=True
     )
-
-    # Technology features
 
     features = [
         (
@@ -1233,21 +1108,21 @@ elif page == "AI & Technology":
 
     st.write("")
 
-    # Prototype note
-
     st.markdown(
         """
         <div class="info-box">
 
-        <b>Prototype Note</b><br><br>
+            <b>Prototype Note</b>
 
-        The current prototype uses an explainable
-        rule-based decision engine to demonstrate
-        the intelligent decision workflow.
+            <br><br>
 
-        In a production implementation, the decision
-        engine can be enhanced with trained machine
-        learning models using real-world food donation data.
+            The current prototype uses an explainable
+            rule-based decision engine to demonstrate
+            the intelligent decision workflow.
+
+            In a production implementation, the decision
+            engine can be enhanced with trained machine
+            learning models using real-world food donation data.
 
         </div>
         """,
@@ -1255,8 +1130,6 @@ elif page == "AI & Technology":
     )
 
     st.write("")
-
-    # Technology stack
 
     st.markdown(
         '<div class="section-title">'
@@ -1277,13 +1150,13 @@ elif page == "AI & Technology":
         ],
 
         "Technology": [
-            "Streamlit / React / Flutter",
-            "Python / FastAPI",
-            "SQLite / Firebase / MongoDB",
-            "Scikit-learn / TensorFlow / PyTorch",
+            "Streamlit",
+            "Python",
+            "SQLite",
+            "Scikit-learn",
             "OpenCV",
-            "Google Maps API / OpenStreetMap",
-            "Firebase / Google Cloud"
+            "OpenStreetMap",
+            "Cloud deployment"
         ]
     })
 
@@ -1301,9 +1174,7 @@ elif page == "AI & Technology":
 st.markdown(
     """
     <div class="footer">
-
         FOOD RESCUE AI 4.0 • Prototype
-
     </div>
     """,
     unsafe_allow_html=True
