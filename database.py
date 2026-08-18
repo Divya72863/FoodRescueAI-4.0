@@ -15,28 +15,18 @@ def create_database():
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS donations (
-
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-            food_name TEXT,
-
-            quantity INTEGER,
-
+            food_name TEXT NOT NULL,
+            quantity INTEGER NOT NULL,
             preparation_time INTEGER,
-
             storage_condition TEXT,
-
             priority TEXT,
-
             ngo_name TEXT,
-
             status TEXT
-
         )
     """)
 
     connection.commit()
-
     connection.close()
 
 
@@ -58,8 +48,7 @@ def add_donation(
     cursor = connection.cursor()
 
     cursor.execute("""
-        INSERT INTO donations
-        (
+        INSERT INTO donations (
             food_name,
             quantity,
             preparation_time,
@@ -68,9 +57,7 @@ def add_donation(
             ngo_name,
             status
         )
-
         VALUES (?, ?, ?, ?, ?, ?, ?)
-
     """, (
         food_name,
         quantity,
@@ -82,12 +69,11 @@ def add_donation(
     ))
 
     connection.commit()
-
     connection.close()
 
 
 # ============================================================
-# GET ALL DONATIONS
+# GET DONATIONS
 # ============================================================
 
 def get_donations():
@@ -97,7 +83,15 @@ def get_donations():
     cursor = connection.cursor()
 
     cursor.execute("""
-        SELECT *
+        SELECT
+            id,
+            food_name,
+            quantity,
+            preparation_time,
+            storage_condition,
+            priority,
+            ngo_name,
+            status
         FROM donations
         ORDER BY id DESC
     """)
@@ -121,17 +115,7 @@ def mark_delivered(donation_id):
 
     cursor.execute("""
         UPDATE donations
-
         SET status = 'Delivered'
-
-        WHERE id = ?
-
-    """, (donation_id,))
-
-    connection.commit()
-
-    connection.close()
-
         WHERE id = ?
     """, (donation_id,))
 
