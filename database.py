@@ -3,9 +3,14 @@ import sqlite3
 DB_NAME = "food_rescue.db"
 
 
-def init_database():
+# ============================================================
+# CREATE DATABASE
+# ============================================================
+
+def create_database():
 
     connection = sqlite3.connect(DB_NAME)
+
     cursor = connection.cursor()
 
     cursor.execute("""
@@ -31,8 +36,13 @@ def init_database():
     """)
 
     connection.commit()
+
     connection.close()
 
+
+# ============================================================
+# ADD DONATION
+# ============================================================
 
 def add_donation(
     food_name,
@@ -44,6 +54,7 @@ def add_donation(
 ):
 
     connection = sqlite3.connect(DB_NAME)
+
     cursor = connection.cursor()
 
     cursor.execute("""
@@ -57,7 +68,9 @@ def add_donation(
             ngo_name,
             status
         )
+
         VALUES (?, ?, ?, ?, ?, ?, ?)
+
     """, (
         food_name,
         quantity,
@@ -69,12 +82,18 @@ def add_donation(
     ))
 
     connection.commit()
+
     connection.close()
 
+
+# ============================================================
+# GET ALL DONATIONS
+# ============================================================
 
 def get_donations():
 
     connection = sqlite3.connect(DB_NAME)
+
     cursor = connection.cursor()
 
     cursor.execute("""
@@ -90,15 +109,28 @@ def get_donations():
     return data
 
 
+# ============================================================
+# MARK DONATION AS DELIVERED
+# ============================================================
+
 def mark_delivered(donation_id):
 
     connection = sqlite3.connect(DB_NAME)
+
     cursor = connection.cursor()
 
     cursor.execute("""
         UPDATE donations
 
         SET status = 'Delivered'
+
+        WHERE id = ?
+
+    """, (donation_id,))
+
+    connection.commit()
+
+    connection.close()
 
         WHERE id = ?
     """, (donation_id,))
