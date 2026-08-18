@@ -4,7 +4,7 @@ import pandas as pd
 from ai_engine import analyze_donation
 from ngo_data import recommend_ngo
 from database import (
-    init_database,
+    create_database,
     add_donation,
     get_donations,
     mark_delivered
@@ -26,7 +26,7 @@ st.set_page_config(
 # DATABASE INITIALIZATION
 # ============================================================
 
-init_database()
+create_database()
 
 
 # ============================================================
