@@ -1,24 +1,32 @@
 import sqlite3
 
-
 DB_NAME = "food_rescue.db"
 
 
-def create_database():
-    connection = sqlite3.connect(DB_NAME)
+def init_database():
 
+    connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS donations (
+
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+
             food_name TEXT,
+
             quantity INTEGER,
-            preparation_time TEXT,
+
+            preparation_time INTEGER,
+
             storage_condition TEXT,
+
             priority TEXT,
+
             ngo_name TEXT,
+
             status TEXT
+
         )
     """)
 
@@ -34,8 +42,8 @@ def add_donation(
     priority,
     ngo_name
 ):
-    connection = sqlite3.connect(DB_NAME)
 
+    connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
 
     cursor.execute("""
@@ -65,8 +73,8 @@ def add_donation(
 
 
 def get_donations():
-    connection = sqlite3.connect(DB_NAME)
 
+    connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
 
     cursor.execute("""
@@ -83,13 +91,15 @@ def get_donations():
 
 
 def mark_delivered(donation_id):
-    connection = sqlite3.connect(DB_NAME)
 
+    connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
 
     cursor.execute("""
         UPDATE donations
+
         SET status = 'Delivered'
+
         WHERE id = ?
     """, (donation_id,))
 
