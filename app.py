@@ -3,6 +3,7 @@ import pandas as pd
 
 from ai_engine import analyze_donation
 from ngo_data import recommend_ngo
+
 from database import (
     create_database,
     add_donation,
@@ -10,21 +11,11 @@ from database import (
     mark_delivered
 )
 
-
-# ============================================================
-# PAGE CONFIGURATION
-# ============================================================
-
 st.set_page_config(
     page_title="Food Rescue AI 4.0",
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
-
-# ============================================================
-# DATABASE INITIALIZATION
-# ============================================================
 
 create_database()
 
