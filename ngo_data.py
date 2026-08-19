@@ -1,3 +1,8 @@
+# ============================================================
+# FOOD RESCUE AI 4.0
+# NGO RECOMMENDATION DATA
+# ============================================================
+
 NGOS = [
     {
         "name": "Hope Community Kitchen",
@@ -23,44 +28,32 @@ NGOS = [
 ]
 
 
-def recommend_ngo(quantity):
+def recommend_ngo():
 
-    candidates = []
+    # Find NGOs that currently have capacity
+    available_ngos = [
+        ngo
+        for ngo in NGOS
+        if ngo["capacity"] in ["High", "Medium"]
+    ]
 
-    for ngo in NGOS:
+    # If no NGO is available
+    if not available_ngos:
+        return {
+            "name": "No NGO Available",
+            "location": "N/A",
+            "distance": 0,
+            "capacity": "Unavailable",
+            "need": "N/A"
+        }
 
-        if ngo["capacity"] == "High":
-            capacity_score = 3
-        elif ngo["capacity"] == "Medium":
-            capacity_score = 2
-        else:
-            capacity_score = 1
-
-        if ngo["need"] == "High":
-            need_score = 3
-        else:
-            need_score = 2
-
-        # Smaller distance = better
-        distance_score = max(
-            1,
-            10 - ngo["distance"]
+    # Prioritize higher-need NGOs
+    # and then choose the closest suitable NGO
+    available_ngos.sort(
+        key=lambda ngo: (
+            0 if ngo["need"] == "High" else 1,
+            ngo["distance"]
         )
-
-        total_score = (
-            capacity_score
-            + need_score
-            + distance_score
-        )
-
-        candidates.append({
-            **ngo,
-            "match_score": round(total_score, 2)
-        })
-
-    candidates.sort(
-        key=lambda x: x["match_score"],
-        reverse=True
     )
 
-    return candidates[0], candidates
+    return available_ngos[0]
