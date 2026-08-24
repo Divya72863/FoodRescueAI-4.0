@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Impact</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+
+</head>
+
+<body>
+
+{% include "partials/navbar.html" %}
+
+<div class="dashboard">
+
+    <div class="page-header center">
+
+        <span class="badge">
+            IMPACT
+        </span>
+
+        <h1>
+            Food Rescue Impact 🌱
+        </h1>
+
+        <p>
+            Every successful redistribution moves
+            surplus food closer to someone who needs it.
+        </p>
+
+    </div>
+
+
+    <div class="impact-hero">
+
+        <div class="impact-number">
+
+            {{ stats.delivered_meals }}
+
+        </div>
+
+        <div class="impact-label">
+
+            Meals Successfully Rescued
+
+        </div>
+
+        <p>
+
+            Through the Food Rescue AI prototype
+
+        </p>
+
+    </div>
+
+
+    <div class="stats-grid">
+
+        <div class="stat-card">
+
+            
+
+            <span>Total Donations</span>
+
+            <strong>
+                {{ stats.total_donations }}
+            </strong>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            
+
+            <span>Total Meals</span>
+
+            <strong>
+                {{ stats.total_meals }}
+            </strong>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <div class="stat-icon orange">
+                🤝
+            </div>
+
+            <span>Accepted</span>
+
+            <strong>
+                {{ stats.accepted }}
+            </strong>
+
+        </div>
+
+
+        <div class="stat-card">
+
+            <div class="stat-icon green">
+                ✅
+            </div>
+
+            <span>Delivered</span>
+
+            <strong>
+                {{ stats.delivered }}
+            </strong>
+
+        </div>
+
+    </div>
+
+
+    <div class="vision-card">
+
+        
+
+        <h2>
+            Food exists. People need it.
+        </h2>
+
+        <p>
+            The missing link is intelligent coordination.
+        </p>
+
+    </div>
+
+</div>
+
+</body>
+
+</html>
