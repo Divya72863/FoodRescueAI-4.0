@@ -1,27 +1,27 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
-import sqlite3
 from datetime import datetime
+import sqlite3
 import os
 
 # ============================================================
 # FOOD RESCUE AI
-# Single-file FastAPI prototype
+# Enhanced single-file prototype
 # ============================================================
 
 app = FastAPI(
     title="Food Rescue AI",
     description="AI-powered food donation prioritization and NGO recommendation",
-    version="1.0.0"
+    version="2.0.0"
 )
+
+DB_FILE = "food_rescue.db"
+
 
 # ============================================================
 # DATABASE
 # ============================================================
-
-DB_FILE = "food_rescue.db"
-
 
 def get_db():
     conn = sqlite3.connect(DB_FILE)
@@ -58,6 +58,7 @@ def init_db():
 
 init_db()
 
+
 # ============================================================
 # NGO DATA
 # ============================================================
@@ -86,13 +87,19 @@ NGOS = [
         "location": "Madhapur",
         "focus": ["fruits", "vegetarian", "bakery"],
         "capacity": 500
+    },
+    {
+        "name": "Community Food Support",
+        "location": "Miyapur",
+        "focus": ["mixed", "fruits", "vegetarian"],
+        "capacity": 700
     }
 ]
 
-# ============================================================
-# DATA MODEL
-# ============================================================
 
+# ============================================================
+# DATA MODELS
+# ============================================================
 
 class Donation(BaseModel):
     donor_name: str
@@ -112,121 +119,88 @@ class StatusUpdate(BaseModel):
 # AI PRIORITY ENGINE
 # ============================================================
 
-
 def analyze_food(data):
 
     score = 0
     reasons = []
 
-    # -------------------------
-    # Freshness / urgency
-    # -------------------------
-
+    # Freshness
     if data.freshness_hours <= 2:
         score += 40
-        reasons.append(
-            "The food is extremely time-sensitive"
-        )
+        reasons.append("The food is extremely time-sensitive")
 
     elif data.freshness_hours <= 6:
         score += 30
-        reasons.append(
-            "The food should be redistributed soon"
-        )
+        reasons.append("The food should be redistributed soon")
 
     elif data.freshness_hours <= 12:
         score += 20
-        reasons.append(
-            "The food has moderate redistribution urgency"
-        )
+        reasons.append("The food has moderate redistribution urgency")
+
+    elif data.freshness_hours <= 24:
+        score += 10
+        reasons.append("The food has reasonable remaining freshness")
 
     else:
-        score += 10
-        reasons.append(
-            "The food has relatively longer usability"
-        )
+        reasons.append("The food has relatively longer freshness")
 
-    # -------------------------
     # Quantity
-    # -------------------------
-
     if data.quantity >= 100:
-        score += 30
-        reasons.append(
-            "The large quantity can support many beneficiaries"
-        )
+        score += 25
+        reasons.append("The large quantity can support many beneficiaries")
 
     elif data.quantity >= 50:
         score += 20
-        reasons.append(
-            "The donation contains a useful quantity of food"
-        )
+        reasons.append("The donation provides a useful quantity of food")
 
     elif data.quantity >= 20:
-        score += 12
-        reasons.append(
-            "The donation can support a community distribution"
-        )
+        score += 10
+        reasons.append("The donation provides a moderate quantity")
 
     else:
         score += 5
+        reasons.append("The donation quantity is suitable for a smaller distribution")
 
-    # -------------------------
     # Food type
-    # -------------------------
-
     food_type = data.food_type.lower()
 
     if food_type == "cooked":
         score += 20
-        reasons.append(
-            "Cooked food has higher redistribution urgency"
-        )
+        reasons.append("Cooked food generally requires faster redistribution")
 
     elif food_type == "bakery":
         score += 15
-        reasons.append(
-            "Bakery items can be redistributed quickly"
-        )
+        reasons.append("Bakery items can be distributed efficiently")
 
     elif food_type == "fruits":
         score += 12
-        reasons.append(
-            "Fresh produce benefits from quick redistribution"
-        )
+        reasons.append("Fresh produce can support immediate nutritional needs")
 
     elif food_type == "vegetarian":
-        score += 15
-        reasons.append(
-            "Vegetarian food is suitable for broad distribution"
-        )
+        score += 12
+        reasons.append("Vegetarian food is suitable for broad beneficiary groups")
 
     else:
         score += 8
+        reasons.append("The food can be considered for community redistribution")
 
     score = min(score, 100)
 
     if score >= 80:
         level = "CRITICAL"
-
     elif score >= 60:
         level = "HIGH"
-
     elif score >= 40:
         level = "MEDIUM"
-
     else:
         level = "LOW"
 
-    reason = ". ".join(reasons) + "."
-
-    return score, level, reason
+    return score, level, ". ".join(reasons) + "."
 
 
 # ============================================================
 # NGO RECOMMENDATION
 # ============================================================
-
 
 def recommend_ngo(data):
 
@@ -243,7 +217,6 @@ def recommend_ngo(data):
         # Food compatibility
         if food_type in ngo["focus"]:
             score += 50
-
         elif "mixed" in ngo["focus"]:
             score += 30
 
@@ -251,7 +224,7 @@ def recommend_ngo(data):
         if data.quantity <= ngo["capacity"]:
             score += 30
 
-        # Location match
+        # Location
         if ngo["location"].lower() in location:
             score += 20
 
@@ -263,2227 +236,8 @@ def recommend_ngo(data):
 
 
 # ============================================================
-# MAIN HTML APPLICATION
-# ============================================================
-
-
-HTML = """
-<!DOCTYPE html>
-
-<html lang="en">
-
-<head>
-
-<meta charset="UTF-8">
-
-<meta name="viewport"
-      content="width=device-width, initial-scale=1.0">
-
-<title>Food Rescue AI</title>
-
-<style>
-
-@import url(
-'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap'
-);
-
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
-
-:root {
-    --bg: #f5f7fb;
-    --dark: #11182d;
-    --dark2: #1b2440;
-    --purple: #6757e8;
-    --purple2: #5040d0;
-    --text: #171c2f;
-    --muted: #7d8497;
-    --border: #e5e8f0;
-    --green: #20b574;
-    --orange: #f29a3f;
-    --red: #ef5b5b;
-    --white: #ffffff;
-}
-
-body {
-    font-family: "DM Sans", sans-serif;
-    background: var(--bg);
-    color: var(--text);
-}
-
-button,
-input,
-select {
-    font-family: inherit;
-}
-
-button {
-    cursor: pointer;
-}
-
-.app {
-    min-height: 100vh;
-    display: flex;
-}
-
-
-/* =========================================================
-   SIDEBAR
-   ========================================================= */
-
-.sidebar {
-    width: 245px;
-    min-height: 100vh;
-    background: var(--dark);
-    color: white;
-    padding: 25px 17px;
-    position: fixed;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    display: flex;
-    flex-direction: column;
-}
-
-.logo {
-    display: flex;
-    align-items: center;
-    gap: 11px;
-    padding: 0 10px 35px;
-}
-
-.logo-icon {
-    width: 43px;
-    height: 43px;
-    border-radius: 12px;
-    background: linear-gradient(
-        135deg,
-        #7768ef,
-        #4d3bc3
-    );
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 22px;
-}
-
-.logo h2 {
-    font-family: "Space Grotesk";
-    font-size: 17px;
-}
-
-.logo small {
-    color: #858ea9;
-    font-size: 10px;
-}
-
-.nav {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.nav button {
-    border: none;
-    background: transparent;
-    color: #8e97b1;
-    padding: 13px;
-    border-radius: 10px;
-    text-align: left;
-    font-size: 13px;
-}
-
-.nav button:hover,
-.nav button.active {
-    background: var(--dark2);
-    color: white;
-}
-
-.sidebar-bottom {
-    margin-top: auto;
-}
-
-.ai-status {
-    padding: 13px;
-    background: rgba(255,255,255,.05);
-    border: 1px solid rgba(255,255,255,.07);
-    border-radius: 11px;
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.status-dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: #34d88d;
-    box-shadow: 0 0 10px #34d88d;
-}
-
-.ai-status strong {
-    display: block;
-    font-size: 11px;
-}
-
-.ai-status span {
-    color: #77819d;
-    font-size: 9px;
-}
-
-
-/* =========================================================
-   MAIN
-   ========================================================= */
-
-.main {
-    margin-left: 245px;
-    width: calc(100% - 245px);
-    padding: 28px 35px;
-}
-
-.topbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 25px;
-}
-
-.eyebrow {
-    color: var(--purple);
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-    margin-bottom: 5px;
-}
-
-.topbar h1 {
-    font-family: "Space Grotesk";
-    font-size: 27px;
-}
-
-.top-actions {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.live {
-    color: var(--muted);
-    font-size: 11px;
-}
-
-.live span {
-    display: inline-block;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--green);
-    margin-right: 5px;
-}
-
-.primary-btn {
-    border: none;
-    background: var(--purple);
-    color: white;
-    padding: 11px 16px;
-    border-radius: 8px;
-    font-weight: 600;
-}
-
-.primary-btn:hover {
-    background: var(--purple2);
-}
-
-
-/* =========================================================
-   SECTIONS
-   ========================================================= */
-
-.section {
-    display: none;
-}
-
-.section.active {
-    display: block;
-}
-
-
-/* =========================================================
-   HERO
-   ========================================================= */
-
-.hero {
-    min-height: 280px;
-    border-radius: 19px;
-    padding: 38px 42px;
-    color: white;
-    background:
-        radial-gradient(
-            circle at 85% 25%,
-            rgba(117,102,240,.45),
-            transparent 30%
-        ),
-        linear-gradient(
-            120deg,
-            #161d38,
-            #342d69
-        );
-    display: flex;
-    overflow: hidden;
-}
-
-.hero-left {
-    width: 58%;
-}
-
-.hero-tag {
-    display: inline-block;
-    background: rgba(255,255,255,.08);
-    padding: 6px 10px;
-    border-radius: 20px;
-    font-size: 8px;
-    letter-spacing: 1.2px;
-    margin-bottom: 15px;
-}
-
-.hero h2 {
-    font-family: "Space Grotesk";
-    font-size: 34px;
-    line-height: 1.15;
-}
-
-.hero h2 span {
-    color: #aaa1ff;
-}
-
-.hero p {
-    color: #b9bfd2;
-    font-size: 12px;
-    line-height: 1.7;
-    max-width: 520px;
-    margin: 13px 0 20px;
-}
-
-.hero-btn {
-    border: none;
-    background: white;
-    color: #393071;
-    padding: 11px 17px;
-    border-radius: 8px;
-    font-weight: 600;
-}
-
-.hero-right {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.food-card {
-    width: 235px;
-    padding: 15px;
-    border-radius: 15px;
-    background: rgba(255,255,255,.09);
-    border: 1px solid rgba(255,255,255,.15);
-    backdrop-filter: blur(12px);
-    display: flex;
-    align-items: center;
-    gap: 11px;
-}
-
-.food-icon {
-    width: 43px;
-    height: 43px;
-    background: white;
-    border-radius: 11px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 21px;
-}
-
-.food-card strong {
-    display: block;
-    font-size: 12px;
-}
-
-.food-card small {
-    color: #aab1c7;
-    font-size: 9px;
-}
-
-.food-score {
-    margin-left: auto;
-    font-size: 18px;
-    color: #83e6b5;
-    font-weight: 700;
-}
-
-
-/* =========================================================
-   METRICS
-   ========================================================= */
-
-.metrics {
-    display: grid;
-    grid-template-columns: repeat(4,1fr);
-    gap: 14px;
-    margin: 19px 0;
-}
-
-.metric {
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 13px;
-    padding: 18px;
-}
-
-.metric span {
-    color: var(--muted);
-    font-size: 10px;
-}
-
-.metric strong {
-    display: block;
-    margin-top: 5px;
-    font-family: "Space Grotesk";
-    font-size: 24px;
-}
-
-
-/* =========================================================
-   DASHBOARD PANELS
-   ========================================================= */
-
-.dashboard-grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 16px;
-}
-
-.panel {
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 22px;
-}
-
-.panel h3 {
-    font-family: "Space Grotesk";
-    font-size: 16px;
-}
-
-.workflow {
-    display: flex;
-    align-items: center;
-    margin-top: 25px;
-}
-
-.step {
-    text-align: center;
-}
-
-.step-circle {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    background: #eeeaff;
-    color: var(--purple);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin: auto;
-    font-size: 10px;
-    font-weight: 700;
-}
-
-.step span {
-    display: block;
-    color: #747c90;
-    font-size: 9px;
-    margin-top: 7px;
-}
-
-.workflow-line {
-    flex: 1;
-    height: 1px;
-    background: #dfe2ea;
-    margin: 0 8px 20px;
-}
-
-.impact {
-    color: white;
-    background: linear-gradient(
-        145deg,
-        #6757e8,
-        #4031aa
-    );
-}
-
-.impact .eyebrow {
-    color: #bdb5ff;
-}
-
-.impact-number {
-    font-family: "Space Grotesk";
-    font-size: 46px;
-    font-weight: 700;
-    margin: 12px 0 5px;
-}
-
-.impact p {
-    color: #c5c7df;
-    font-size: 11px;
-    line-height: 1.6;
-}
-
-
-/* =========================================================
-   FORM
-   ========================================================= */
-
-.heading {
-    margin-bottom: 22px;
-}
-
-.heading h2 {
-    font-family: "Space Grotesk";
-    font-size: 28px;
-}
-
-.heading p:last-child {
-    color: var(--muted);
-    font-size: 12px;
-    margin-top: 6px;
-}
-
-.donation-grid {
-    display: grid;
-    grid-template-columns: 1.35fr 1fr;
-    gap: 18px;
-}
-
-.form-card,
-.ai-card,
-.table-card {
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 15px;
-    padding: 24px;
-}
-
-.row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 13px;
-}
-
-.field {
-    margin-bottom: 15px;
-}
-
-.field label {
-    display: block;
-    font-size: 10px;
-    font-weight: 600;
-    color: #52596d;
-    margin-bottom: 6px;
-}
-
-.field input,
-.field select {
-    width: 100%;
-    border: 1px solid #dfe2e9;
-    background: #fafbfd;
-    border-radius: 8px;
-    padding: 11px;
-    font-size: 11px;
-    outline: none;
-}
-
-.field input:focus,
-.field select:focus {
-    border-color: var(--purple);
-    background: white;
-}
-
-.analyze {
-    width: 100%;
-    border: none;
-    background: var(--purple);
-    color: white;
-    padding: 13px;
-    border-radius: 8px;
-    font-weight: 600;
-    margin-top: 3px;
-}
-
-.analyze:hover {
-    background: var(--purple2);
-}
-
-
-/* =========================================================
-   AI RESULT
-   ========================================================= */
-
-.ai-card {
-    background:
-        linear-gradient(
-            150deg,
-            #171d35,
-            #282450
-        );
-    color: white;
-}
-
-.ai-title {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.ai-title span {
-    color: #a9a0ff;
-    font-size: 8px;
-    letter-spacing: 1.2px;
-}
-
-.level {
-    padding: 5px 8px;
-    border-radius: 20px;
-    background: rgba(255,255,255,.1);
-    font-size: 8px;
-    font-weight: 700;
-}
-
-.score-area {
-    display: flex;
-    gap: 17px;
-    align-items: center;
-    margin: 25px 0 18px;
-}
-
-.score-circle {
-    width: 95px;
-    height: 95px;
-    border-radius: 50%;
-    border: 8px solid var(--purple);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
-}
-
-.score-circle strong {
-    font-family: "Space Grotesk";
-    font-size: 28px;
-}
-
-.score-circle small {
-    color: #929ab4;
-    font-size: 8px;
-}
-
-.score-area > div:last-child small {
-    color: #8e96b1;
-    font-size: 8px;
-}
-
-.score-area h3 {
-    margin-top: 5px;
-    font-size: 16px;
-}
-
-.reason {
-    background: rgba(255,255,255,.06);
-    border-radius: 9px;
-    padding: 13px;
-    margin-bottom: 14px;
-}
-
-.reason label {
-    color: #aaa1ff;
-    font-size: 8px;
-    letter-spacing: 1px;
-}
-
-.reason p {
-    color: #c1c6d7;
-    font-size: 10px;
-    line-height: 1.7;
-    margin-top: 6px;
-}
-
-.ngo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 13px;
-    background: rgba(255,255,255,.06);
-    border-radius: 9px;
-}
-
-.ngo-icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 9px;
-    background: #eeeaff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.ngo small,
-.ngo strong,
-.ngo span {
-    display: block;
-}
-
-.ngo small {
-    color: #8f97b0;
-    font-size: 7px;
-}
-
-.ngo strong {
-    font-size: 12px;
-    margin: 3px 0;
-}
-
-.ngo span {
-    color: #9da5bb;
-    font-size: 9px;
-}
-
-.success {
-    background: rgba(32,181,116,.14);
-    color: #7be3b1;
-    padding: 10px;
-    text-align: center;
-    border-radius: 7px;
-    font-size: 9px;
-    margin-top: 13px;
-}
-
-.hidden {
-    display: none !important;
-}
-
-
-/* =========================================================
-   RECORDS
-   ========================================================= */
-
-.table-card {
-    padding: 0;
-    overflow: hidden;
-}
-
-.table-head {
-    padding: 18px;
-    display: flex;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--border);
-}
-
-.refresh {
-    border: 1px solid var(--border);
-    background: white;
-    padding: 6px 10px;
-    border-radius: 6px;
-    font-size: 9px;
-}
-
-.table-wrapper {
-    overflow-x: auto;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-th,
-td {
-    padding: 14px 16px;
-    text-align: left;
-    border-bottom: 1px solid #eef0f4;
-    font-size: 10px;
-}
-
-th {
-    color: #858ca0;
-    font-size: 8px;
-    text-transform: uppercase;
-}
-
-.priority,
-.status {
-    padding: 4px 7px;
-    border-radius: 20px;
-    font-size: 8px;
-    font-weight: 700;
-}
-
-.critical {
-    background: #ffe5e5;
-    color: #df4b4b;
-}
-
-.high {
-    background: #fff0df;
-    color: #d78322;
-}
-
-.medium {
-    background: #eeeaff;
-    color: #6657d8;
-}
-
-.low {
-    background: #e6f7ee;
-    color: #219766;
-}
-
-.status {
-    background: #eef0f5;
-    color: #687086;
-}
-
-.status-select {
-    border: 1px solid #dddfe7;
-    border-radius: 5px;
-    padding: 4px;
-    font-size: 8px;
-}
-
-
-/* =========================================================
-   RESPONSIVE
-   ========================================================= */
-
-@media(max-width: 1000px) {
-
-    .sidebar {
-        width: 200px;
-    }
-
-    .main {
-        margin-left: 200px;
-        width: calc(100% - 200px);
-        padding: 22px;
-    }
-
-    .metrics {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .donation-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media(max-width: 700px) {
-
-    .app {
-        display: block;
-    }
-
-    .sidebar {
-        position: relative;
-        width: 100%;
-        min-height: auto;
-    }
-
-    .main {
-        margin-left: 0;
-        width: 100%;
-    }
-
-    .topbar {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-    }
-
-    .hero-left {
-        width: 100%;
-    }
-
-    .hero-right {
-        display: none;
-    }
-
-    .metrics,
-    .dashboard-grid,
-    .row {
-        grid-template-columns: 1fr;
-    }
-
-    .workflow {
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .workflow-line {
-        width: 1px;
-        height: 20px;
-        margin: 0;
-    }
-}
-
-</style>
-
-</head>
-
-
-<body>
-
-<div class="app">
-
-<!-- ======================================================
-     SIDEBAR
-     ====================================================== -->
-
-<aside class="sidebar">
-
-    <div class="logo">
-
-        <div class="logo-icon">
-            🍲
-        </div>
-
-        <div>
-            <h2>Food Rescue</h2>
-            <small>AI Platform</small>
-        </div>
-
-    </div>
-
-
-    <div class="nav">
-
-        <button
-            class="active"
-            onclick="showPage('dashboard',this)"
-        >
-            ◈ &nbsp; Dashboard
-        </button>
-
-        <button
-            onclick="showPage('donate',this)"
-        >
-            ＋ &nbsp; Create Donation
-        </button>
-
-        <button
-            onclick="showPage('records',this)"
-        >
-            ◫ &nbsp; Donation Records
-        </button>
-
-    </div>
-
-
-    <div class="sidebar-bottom">
-
-        <div class="ai-status">
-
-            <div class="status-dot"></div>
-
-            <div>
-                <strong>AI Engine</strong>
-                <span>Operational</span>
-            </div>
-
-        </div>
-
-    </div>
-
-</aside>
-
-
-<!-- ======================================================
-     MAIN
-     ====================================================== -->
-
-<main class="main">
-
-
-<header class="topbar">
-
-    <div>
-
-        <div class="eyebrow">
-            COMMUNITY FOOD NETWORK
-        </div>
-
-        <h1 id="pageTitle">
-            Food Rescue Dashboard
-        </h1>
-
-    </div>
-
-
-    <div class="top-actions">
-
-        <div class="live">
-            <span></span>
-            System Live
-        </div>
-
-        <button
-            class="primary-btn"
-            onclick="openDonation()"
-        >
-            + New Donation
-        </button>
-
-    </div>
-
-</header>
-
-
-<!-- ======================================================
-     DASHBOARD
-     ====================================================== -->
-
-<section
-    id="dashboard"
-    class="section active"
->
-
-<div class="hero">
-
-    <div class="hero-left">
-
-        <div class="hero-tag">
-            AI-POWERED FOOD REDISTRIBUTION
-        </div>
-
-        <h2>
-            Turn surplus food into
-            <span>community impact.</span>
-        </h2>
-
-        <p>
-            Analyze food urgency, prioritize donations,
-            and connect surplus food with suitable
-            community organizations.
-        </p>
-
-        <button
-            class="hero-btn"
-            onclick="openDonation()"
-        >
-            Start a Donation →
-        </button>
-
-    </div>
-
-
-    <div class="hero-right">
-
-        <div class="food-card">
-
-            <div class="food-icon">
-                🍛
-            </div>
-
-            <div>
-                <strong>Fresh Meal</strong>
-                <small>AI Priority Analysis</small>
-            </div>
-
-            <div class="food-score">
-                92
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-
-<div class="metrics">
-
-    <div class="metric">
-        <span>Total Donations</span>
-        <strong id="total">0</strong>
-    </div>
-
-    <div class="metric">
-        <span>Food Delivered</span>
-        <strong id="delivered">0</strong>
-    </div>
-
-    <div class="metric">
-        <span>Pending Pickup</span>
-        <strong id="pending">0</strong>
-    </div>
-
-    <div class="metric">
-        <span>Critical Donations</span>
-        <strong id="critical">0</strong>
-    </div>
-
-</div>
-
-
-<div class="dashboard-grid">
-
-    <div class="panel">
-
-        <div class="eyebrow">
-            AI WORKFLOW
-        </div>
-
-        <h3>
-            From Surplus Food to Community Impact
-        </h3>
-
-
-        <div class="workflow">
-
-            <div class="step">
-
-                <div class="step-circle">
-                    01
-                </div>
-
-                <span>
-                    Food Details
-                </span>
-
-            </div>
-
-
-            <div class="workflow-line"></div>
-
-
-            <div class="step">
-
-                <div class="step-circle">
-                    02
-                </div>
-
-                <span>
-                    AI Priority
-                </span>
-
-            </div>
-
-
-            <div class="workflow-line"></div>
-
-
-            <div class="step">
-
-                <div class="step-circle">
-                    03
-                </div>
-
-                <span>
-                    NGO Match
-                </span>
-
-            </div>
-
-
-            <div class="workflow-line"></div>
-
-
-            <div class="step">
-
-                <div class="step-circle">
-                    04
-                </div>
-
-                <span>
-                    Delivery
-                </span>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-    <div class="panel impact">
-
-        <div class="eyebrow">
-            FOOD RESCUED
-        </div>
-
-        <div
-            class="impact-number"
-            id="quantity"
-        >
-            0
-        </div>
-
-        <p>
-            total units of surplus food
-            registered through the platform.
-        </p>
-
-    </div>
-
-</div>
-
-</section>
-
-
-<!-- ======================================================
-     DONATION
-     ====================================================== -->
-
-<section
-    id="donate"
-    class="section"
->
-
-<div class="heading">
-
-    <div class="eyebrow">
-        DONATION MANAGEMENT
-    </div>
-
-    <h2>
-        Create Food Donation
-    </h2>
-
-    <p>
-        Enter the food details and let the AI
-        determine urgency and the best NGO match.
-    </p>
-
-</div>
-
-
-<div class="donation-grid">
-
-
-<div class="form-card">
-
-<form id="donationForm">
-
-<div class="row">
-
-    <div class="field">
-
-        <label>
-            Donor Name
-        </label>
-
-        <input
-            id="donor_name"
-            placeholder="Restaurant / Hotel / Individual"
-            required
-        >
-
-    </div>
-
-
-    <div class="field">
-
-        <label>
-            Food Name
-        </label>
-
-        <input
-            id="food_name"
-            placeholder="e.g. Vegetable Biryani"
-            required
-        >
-
-    </div>
-
-</div>
-
-
-<div class="row">
-
-    <div class="field">
-
-        <label>
-            Food Type
-        </label>
-
-        <select
-            id="food_type"
-            required
-        >
-
-            <option value="">
-                Select type
-            </option>
-
-            <option value="cooked">
-                Cooked Food
-            </option>
-
-            <option value="vegetarian">
-                Vegetarian
-            </option>
-
-            <option value="bakery">
-                Bakery
-            </option>
-
-            <option value="fruits">
-                Fruits
-            </option>
-
-            <option value="mixed">
-                Mixed Food
-            </option>
-
-        </select>
-
-    </div>
-
-
-    <div class="field">
-
-        <label>
-            Quantity
-        </label>
-
-        <input
-            id="quantityInput"
-            type="number"
-            min="1"
-            placeholder="e.g. 100"
-            required
-        >
-
-    </div>
-
-</div>
-
-
-<div class="row">
-
-    <div class="field">
-
-        <label>
-            Unit
-        </label>
-
-        <select id="unit">
-
-            <option>
-                Meals
-            </option>
-
-            <option>
-                Kg
-            </option>
-
-            <option>
-                Packets
-            </option>
-
-            <option>
-                Boxes
-            </option>
-
-        </select>
-
-    </div>
-
-
-    <div class="field">
-
-        <label>
-            Usable For (Hours)
-        </label>
-
-        <input
-            id="freshness_hours"
-            type="number"
-            min="0"
-            placeholder="e.g. 4"
-            required
-        >
-
-    </div>
-
-</div>
-
-
-<div class="field">
-
-    <label>
-        Pickup Location
-    </label>
-
-    <input
-        id="pickup_location"
-        placeholder="e.g. Madhapur, Hyderabad"
-        required
-    >
-
-</div>
-
-
-<button
-    class="analyze"
-    type="submit"
->
-    ✦ Analyze & Register Donation
-</button>
-
-</form>
-
-</div>
-
-
-<!-- AI RESULT -->
-
-<div
-    id="aiCard"
-    class="ai-card hidden"
->
-
-<div class="ai-title">
-
-    <span>
-        ✦ AI ANALYSIS
-    </span>
-
-    <div
-        class="level"
-        id="level"
-    >
-        HIGH
-    </div>
-
-</div>
-
-
-<div class="score-area">
-
-    <div
-        class="score-circle"
-        id="scoreCircle"
-    >
-
-        <strong id="score">
-            0
-        </strong>
-
-        <small>
-            / 100
-        </small>
-
-    </div>
-
-
-    <div>
-
-        <small>
-            PRIORITY ASSESSMENT
-        </small>
-
-        <h3>
-            Donation Priority
-        </h3>
-
-    </div>
-
-</div>
-
-
-<div class="reason">
-
-    <label>
-        AI Reasoning
-    </label>
-
-    <p id="reason">
-    </p>
-
-</div>
-
-
-<div class="ngo">
-
-    <div class="ngo-icon">
-        🤝
-    </div>
-
-    <div>
-
-        <small>
-            RECOMMENDED NGO
-        </small>
-
-        <strong id="ngoName">
-        </strong>
-
-        <span id="ngoLocation">
-        </span>
-
-    </div>
-
-</div>
-
-
-<div
-    class="success"
-    id="success"
->
-    ✓ Donation successfully registered
-</div>
-
-</div>
-
-</div>
-
-</section>
-
-
-<!-- ======================================================
-     RECORDS
-     ====================================================== -->
-
-<section
-    id="records"
-    class="section"
->
-
-<div class="heading">
-
-    <div class="eyebrow">
-        DONATION HISTORY
-    </div>
-
-    <h2>
-        Donation Records
-    </h2>
-
-    <p>
-        Track donations from registration
-        to delivery.
-    </p>
-
-</div>
-
-
-<div class="table-card">
-
-<div class="table-head">
-
-    <strong>
-        Recent Donations
-    </strong>
-
-    <button
-        class="refresh"
-        onclick="loadRecords()"
-    >
-        ↻ Refresh
-    </button>
-
-</div>
-
-
-<div class="table-wrapper">
-
-<table>
-
-<thead>
-
-<tr>
-    <th>ID</th>
-    <th>Food</th>
-    <th>Quantity</th>
-    <th>Priority</th>
-    <th>NGO</th>
-    <th>Status</th>
-    <th>Update</th>
-</tr>
-
-</thead>
-
-<tbody id="recordsTable">
-
-</tbody>
-
-</table>
-
-</div>
-
-</div>
-
-</section>
-
-
-</main>
-
-</div>
-
-
-<script>
-
-
-// ==========================================================
-// PAGE NAVIGATION
-// ==========================================================
-
-
-function showPage(page, button) {
-
-    document
-        .querySelectorAll(".section")
-        .forEach(section => {
-
-            section.classList.remove("active");
-
-        });
-
-
-    document
-        .getElementById(page)
-        .classList.add("active");
-
-
-    document
-        .querySelectorAll(".nav button")
-        .forEach(btn => {
-
-            btn.classList.remove("active");
-
-        });
-
-
-    button.classList.add("active");
-
-
-    const titles = {
-
-        dashboard:
-            "Food Rescue Dashboard",
-
-        donate:
-            "Create Food Donation",
-
-        records:
-            "Donation Records"
-
-    };
-
-
-    document
-        .getElementById("pageTitle")
-        .textContent = titles[page];
-
-
-    if (page === "records") {
-
-        loadRecords();
-
-    }
-
-}
-
-
-function openDonation() {
-
-    const button =
-        document.querySelectorAll(".nav button")[1];
-
-    showPage("donate", button);
-
-}
-
-
-// ==========================================================
-// CREATE DONATION
-// ==========================================================
-
-
-document
-    .getElementById("donationForm")
-    .addEventListener(
-        "submit",
-        async function(event) {
-
-            event.preventDefault();
-
-
-            const button =
-                document.querySelector(".analyze");
-
-
-            button.disabled = true;
-
-            button.textContent =
-                "✦ AI is analyzing...";
-
-
-            const data = {
-
-                donor_name:
-                    document
-                    .getElementById("donor_name")
-                    .value,
-
-                food_name:
-                    document
-                    .getElementById("food_name")
-                    .value,
-
-                food_type:
-                    document
-                    .getElementById("food_type")
-                    .value,
-
-                quantity:
-                    Number(
-                        document
-                        .getElementById("quantityInput")
-                        .value
-                    ),
-
-                unit:
-                    document
-                    .getElementById("unit")
-                    .value,
-
-                freshness_hours:
-                    Number(
-                        document
-                        .getElementById("freshness_hours")
-                        .value
-                    ),
-
-                pickup_location:
-                    document
-                    .getElementById("pickup_location")
-                    .value
-
-            };
-
-
-            try {
-
-                const response =
-                    await fetch(
-                        "/api/donations",
-                        {
-
-                            method: "POST",
-
-                            headers: {
-                                "Content-Type":
-                                    "application/json"
-                            },
-
-                            body:
-                                JSON.stringify(data)
-
-                        }
-                    );
-
-
-                const result =
-                    await response.json();
-
-
-                if (!response.ok) {
-
-                    throw new Error(
-                        result.detail ||
-                        "Unable to create donation"
-                    );
-
-                }
-
-
-                displayAI(result);
-
-                loadMetrics();
-
-            }
-
-            catch(error) {
-
-                alert(error.message);
-
-            }
-
-
-            finally {
-
-                button.disabled = false;
-
-                button.textContent =
-                    "✦ Analyze & Register Donation";
-
-            }
-
-        }
-    );
-
-
-// ==========================================================
-// DISPLAY AI
-// ==========================================================
-
-
-function displayAI(result) {
-
-    document
-        .getElementById("aiCard")
-        .classList.remove("hidden");
-
-
-    document
-        .getElementById("score")
-        .textContent =
-        result.priority_score;
-
-
-    document
-        .getElementById("level")
-        .textContent =
-        result.priority_level;
-
-
-    document
-        .getElementById("reason")
-        .textContent =
-        result.priority_reason;
-
-
-    document
-        .getElementById("ngoName")
-        .textContent =
-        result.recommended_ngo;
-
-
-    document
-        .getElementById("ngoLocation")
-        .textContent =
-        result.ngo_location;
-
-
-    document
-        .getElementById("success")
-        .textContent =
-        "✓ Donation #" +
-        result.donation_id +
-        " successfully registered";
-
-
-    const circle =
-        document.getElementById(
-            "scoreCircle"
-        );
-
-
-    if (result.priority_score >= 80) {
-
-        circle.style.borderColor =
-            "#ef5b5b";
-
-    }
-
-    else if (result.priority_score >= 60) {
-
-        circle.style.borderColor =
-            "#f29a3f";
-
-    }
-
-    else {
-
-        circle.style.borderColor =
-            "#6757e8";
-
-    }
-
-}
-
-
-// ==========================================================
-// METRICS
-// ==========================================================
-
-
-async function loadMetrics() {
-
-    try {
-
-        const response =
-            await fetch("/api/metrics");
-
-
-        const data =
-            await response.json();
-
-
-        document.getElementById("total")
-            .textContent =
-            data.total_donations;
-
-
-        document.getElementById("delivered")
-            .textContent =
-            data.delivered_donations;
-
-
-        document.getElementById("pending")
-            .textContent =
-            data.pending_donations;
-
-
-        document.getElementById("critical")
-            .textContent =
-            data.critical_donations;
-
-
-        document.getElementById("quantity")
-            .textContent =
-            data.food_quantity;
-
-    }
-
-    catch(error) {
-
-        console.error(error);
-
-    }
-
-}
-
-
-// ==========================================================
-// RECORDS
-// ==========================================================
-
-
-async function loadRecords() {
-
-    const table =
-        document.getElementById(
-            "recordsTable"
-        );
-
-
-    table.innerHTML = `
-        <tr>
-            <td colspan="7">
-                Loading...
-            </td>
-        </tr>
-    `;
-
-
-    try {
-
-        const response =
-            await fetch("/api/donations");
-
-
-        const records =
-            await response.json();
-
-
-        if (records.length === 0) {
-
-            table.innerHTML = `
-                <tr>
-                    <td colspan="7">
-                        No donations registered yet.
-                    </td>
-                </tr>
-            `;
-
-            return;
-
-        }
-
-
-        table.innerHTML = "";
-
-
-        records.forEach(record => {
-
-            const priority =
-                record.priority_level
-                .toLowerCase();
-
-
-            const row =
-                document.createElement("tr");
-
-
-            row.innerHTML = `
-
-                <td>
-                    #${record.id}
-                </td>
-
-                <td>
-                    ${escapeHTML(record.food_name)}
-                </td>
-
-                <td>
-                    ${record.quantity}
-                    ${escapeHTML(record.unit)}
-                </td>
-
-                <td>
-                    <span
-                        class="priority ${priority}"
-                    >
-                        ${record.priority_level}
-                    </span>
-                </td>
-
-                <td>
-                    ${escapeHTML(record.ngo_name)}
-                </td>
-
-                <td>
-                    <span class="status">
-                        ${escapeHTML(record.status)}
-                    </span>
-                </td>
-
-                <td>
-
-                    <select
-                        class="status-select"
-                        onchange="
-                            updateStatus(
-                                ${record.id},
-                                this.value
-                            )
-                        "
-                    >
-
-                        <option>
-                            Update
-                        </option>
-
-                        <option>
-                            Pending Pickup
-                        </option>
-
-                        <option>
-                            Pickup Assigned
-                        </option>
-
-                        <option>
-                            Picked Up
-                        </option>
-
-                        <option>
-                            Delivered
-                        </option>
-
-                        <option>
-                            Completed
-                        </option>
-
-                    </select>
-
-                </td>
-            `;
-
-
-            table.appendChild(row);
-
-        });
-
-    }
-
-    catch(error) {
-
-        table.innerHTML = `
-            <tr>
-                <td colspan="7">
-                    Unable to load records.
-                </td>
-            </tr>
-        `;
-
-    }
-
-}
-
-
-// ==========================================================
-// UPDATE STATUS
-// ==========================================================
-
-
-async function updateStatus(id, status) {
-
-    if (status === "Update") {
-
-        return;
-
-    }
-
-
-    try {
-
-        const response =
-            await fetch(
-                "/api/donations/" +
-                id +
-                "/status",
-                {
-
-                    method: "PUT",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-                            status: status
-                        })
-
-                }
-            );
-
-
-        const result =
-            await response.json();
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                result.detail ||
-                "Unable to update"
-            );
-
-        }
-
-
-        loadRecords();
-
-        loadMetrics();
-
-    }
-
-    catch(error) {
-
-        alert(error.message);
-
-    }
-
-}
-
-
-// ==========================================================
-// SECURITY
-// ==========================================================
-
-
-function escapeHTML(value) {
-
-    const div =
-        document.createElement("div");
-
-    div.textContent = value;
-
-    return div.innerHTML;
-
-}
-
-
-// ==========================================================
-// INITIAL LOAD
-// ==========================================================
-
-loadMetrics();
-
-</script>
-
-</body>
-
-</html>
-"""
-
-
-# ============================================================
-# HOME
-# ============================================================
-
-
-@app.get("/", response_class=HTMLResponse)
-def home():
-    return HTML
-
-
-# ============================================================
-# HEALTH
-# ============================================================
-
-
-@app.get("/health")
-def health():
-    return {
-        "status": "healthy",
-        "application": "Food Rescue AI"
-    }
-
-
-# ============================================================
-# ANALYZE DONATION
-# ============================================================
-
-
-@app.post("/api/analyze")
-def analyze(data: Donation):
-
-    if data.quantity <= 0:
-        raise HTTPException(
-            status_code=400,
-            detail="Quantity must be greater than zero."
-        )
-
-    if data.freshness_hours < 0:
-        raise HTTPException(
-            status_code=400,
-            detail="Freshness hours cannot be negative."
-        )
-
-    score, level, reason = analyze_food(data)
-
-    ngo = recommend_ngo(data)
-
-    return {
-        "priority_score": score,
-        "priority_level": level,
-        "priority_reason": reason,
-        "recommended_ngo": ngo["name"],
-        "ngo_location": ngo["location"]
-    }
-
-
-# ============================================================
 # CREATE DONATION
 # ============================================================
-
 
 @app.post("/api/donations")
 def create_donation(data: Donation):
@@ -2497,21 +251,16 @@ def create_donation(data: Donation):
     if data.freshness_hours < 0:
         raise HTTPException(
             status_code=400,
-            detail="Freshness hours cannot be negative."
+            detail="Freshness cannot be negative."
         )
 
     score, level, reason = analyze_food(data)
 
     ngo = recommend_ngo(data)
 
-    created_at = datetime.now().strftime(
-        "%Y-%m-%d %H:%M:%S"
-    )
-
     conn = get_db()
 
-    cursor = conn.execute(
-        """
+    cursor = conn.execute("""
         INSERT INTO donations (
             donor_name,
             food_name,
@@ -2529,24 +278,22 @@ def create_donation(data: Donation):
             created_at
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            data.donor_name,
-            data.food_name,
-            data.food_type,
-            data.quantity,
-            data.unit,
-            data.freshness_hours,
-            data.pickup_location,
-            score,
-            level,
-            reason,
-            ngo["name"],
-            ngo["location"],
-            "Pending Pickup",
-            created_at
-        )
-    )
+    """, (
+        data.donor_name,
+        data.food_name,
+        data.food_type,
+        data.quantity,
+        data.unit,
+        data.freshness_hours,
+        data.pickup_location,
+        score,
+        level,
+        reason,
+        ngo["name"],
+        ngo["location"],
+        "Pending Pickup",
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ))
 
     donation_id = cursor.lastrowid
 
@@ -2559,9 +306,7 @@ def create_donation(data: Donation):
         "priority_score": score,
         "priority_level": level,
         "priority_reason": reason,
-        "recommended_ngo": ngo["name"],
-        "ngo_location": ngo["location"],
-        "status": "Pending Pickup"
+        "ngo": ngo
     }
 
 
@@ -2569,19 +314,16 @@ def create_donation(data: Donation):
 # GET DONATIONS
 # ============================================================
 
-
 @app.get("/api/donations")
 def get_donations():
 
     conn = get_db()
 
-    rows = conn.execute(
-        """
+    rows = conn.execute("""
         SELECT *
         FROM donations
         ORDER BY id DESC
-        """
-    ).fetchall()
+    """).fetchall()
 
     conn.close()
 
@@ -2589,40 +331,8 @@ def get_donations():
 
 
 # ============================================================
-# GET SINGLE DONATION
-# ============================================================
-
-
-@app.get("/api/donations/{donation_id}")
-def get_donation(donation_id: int):
-
-    conn = get_db()
-
-    row = conn.execute(
-        """
-        SELECT *
-        FROM donations
-        WHERE id = ?
-        """,
-        (donation_id,)
-    ).fetchone()
-
-    conn.close()
-
-    if not row:
-
-        raise HTTPException(
-            status_code=404,
-            detail="Donation not found."
-        )
-
-    return dict(row)
-
-
-# ============================================================
 # UPDATE STATUS
 # ============================================================
-
 
 @app.put("/api/donations/{donation_id}/status")
 def update_status(
@@ -2632,14 +342,13 @@ def update_status(
 
     allowed = [
         "Pending Pickup",
-        "Pickup Assigned",
         "Picked Up",
+        "In Transit",
         "Delivered",
         "Completed"
     ]
 
     if data.status not in allowed:
-
         raise HTTPException(
             status_code=400,
             detail="Invalid status."
@@ -2647,24 +356,19 @@ def update_status(
 
     conn = get_db()
 
-    cursor = conn.execute(
-        """
+    cursor = conn.execute("""
         UPDATE donations
         SET status = ?
         WHERE id = ?
-        """,
-        (
-            data.status,
-            donation_id
-        )
-    )
+    """, (
+        data.status,
+        donation_id
+    ))
 
     conn.commit()
 
     if cursor.rowcount == 0:
-
         conn.close()
-
         raise HTTPException(
             status_code=404,
             detail="Donation not found."
@@ -2683,7 +387,6 @@ def update_status(
 # METRICS
 # ============================================================
 
-
 @app.get("/api/metrics")
 def metrics():
 
@@ -2693,36 +396,28 @@ def metrics():
         "SELECT COUNT(*) AS c FROM donations"
     ).fetchone()["c"]
 
-    delivered = conn.execute(
-        """
+    delivered = conn.execute("""
         SELECT COUNT(*) AS c
         FROM donations
-        WHERE status IN ('Delivered','Completed')
-        """
-    ).fetchone()["c"]
+        WHERE status IN ('Delivered', 'Completed')
+    """).fetchone()["c"]
 
-    pending = conn.execute(
-        """
+    pending = conn.execute("""
         SELECT COUNT(*) AS c
         FROM donations
-        WHERE status NOT IN ('Delivered','Completed')
-        """
-    ).fetchone()["c"]
+        WHERE status NOT IN ('Delivered', 'Completed')
+    """).fetchone()["c"]
 
-    critical = conn.execute(
-        """
+    critical = conn.execute("""
         SELECT COUNT(*) AS c
         FROM donations
         WHERE priority_level = 'CRITICAL'
-        """
-    ).fetchone()["c"]
+    """).fetchone()["c"]
 
-    quantity = conn.execute(
-        """
-        SELECT COALESCE(SUM(quantity),0) AS q
+    quantity = conn.execute("""
+        SELECT COALESCE(SUM(quantity), 0) AS q
         FROM donations
-        """
-    ).fetchone()["q"]
+    """).fetchone()["q"]
 
     conn.close()
 
@@ -2736,9 +431,2854 @@ def metrics():
 
 
 # ============================================================
-# RENDER ENTRY POINT
+# FRONTEND
 # ============================================================
 
+HTML = r"""
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
+
+<title>Food Rescue AI</title>
+
+<style>
+
+@import url(
+'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap'
+);
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+
+    --dark: #10172b;
+    --dark2: #18213d;
+
+    --primary: #6557e8;
+    --primary-dark: #5042d0;
+
+    --bg: #f4f6fb;
+
+    --white: #ffffff;
+
+    --text: #171d32;
+
+    --muted: #70798f;
+
+    --border: #e2e6ef;
+
+    --green: #20b477;
+
+    --orange: #ef9b3f;
+
+    --red: #e85b5b;
+
+    --blue: #4386e8;
+}
+
+body {
+
+    font-family: "DM Sans", sans-serif;
+
+    background: var(--bg);
+
+    color: var(--text);
+
+    font-size: 16px;
+}
+
+button,
+input,
+select {
+
+    font-family: inherit;
+}
+
+button {
+
+    cursor: pointer;
+}
+
+.app {
+
+    min-height: 100vh;
+
+    display: flex;
+}
+
+
+/* =========================================================
+   SIDEBAR
+   ========================================================= */
+
+.sidebar {
+
+    width: 270px;
+
+    min-height: 100vh;
+
+    background: linear-gradient(
+        180deg,
+        #10172b,
+        #161f3a
+    );
+
+    color: white;
+
+    padding: 30px 20px;
+
+    position: fixed;
+
+    left: 0;
+
+    top: 0;
+
+    bottom: 0;
+
+    z-index: 10;
+}
+
+.logo {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 14px;
+
+    padding: 0 10px 40px;
+}
+
+.logo-icon {
+
+    width: 50px;
+
+    height: 50px;
+
+    border-radius: 15px;
+
+    background: linear-gradient(
+        135deg,
+        #796af1,
+        #5140cf
+    );
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-size: 25px;
+}
+
+.logo-title {
+
+    font-family: "Space Grotesk";
+
+    font-size: 21px;
+
+    font-weight: 700;
+}
+
+.logo-subtitle {
+
+    font-size: 12px;
+
+    color: #aab2c9;
+
+    margin-top: 3px;
+}
+
+.menu-title {
+
+    color: #777f99;
+
+    font-size: 12px;
+
+    text-transform: uppercase;
+
+    letter-spacing: 1.4px;
+
+    margin: 10px 12px 12px;
+}
+
+.nav {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 8px;
+}
+
+.nav button {
+
+    border: none;
+
+    background: transparent;
+
+    color: #aeb6ca;
+
+    text-align: left;
+
+    padding: 15px 15px;
+
+    border-radius: 12px;
+
+    font-size: 16px;
+
+    font-weight: 600;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 13px;
+
+    transition: .2s;
+}
+
+.nav button:hover {
+
+    background: rgba(255,255,255,.08);
+
+    color: white;
+}
+
+.nav button.active {
+
+    background: linear-gradient(
+        135deg,
+        #6959e8,
+        #5142cf
+    );
+
+    color: white;
+
+    box-shadow:
+        0 8px 22px rgba(91,72,210,.3);
+}
+
+.sidebar-bottom {
+
+    position: absolute;
+
+    left: 20px;
+
+    right: 20px;
+
+    bottom: 25px;
+
+    background: rgba(255,255,255,.06);
+
+    padding: 17px;
+
+    border-radius: 14px;
+
+    border: 1px solid rgba(255,255,255,.07);
+}
+
+.sidebar-bottom strong {
+
+    display: block;
+
+    font-size: 14px;
+
+    margin-bottom: 5px;
+}
+
+.sidebar-bottom span {
+
+    color: #9099b1;
+
+    font-size: 12px;
+}
+
+
+/* =========================================================
+   MAIN
+   ========================================================= */
+
+.main {
+
+    margin-left: 270px;
+
+    width: calc(100% - 270px);
+
+    padding: 35px 42px 60px;
+}
+
+.topbar {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin-bottom: 30px;
+}
+
+.page-title {
+
+    font-family: "Space Grotesk";
+
+    font-size: 34px;
+
+    font-weight: 700;
+
+    letter-spacing: -.5px;
+}
+
+.page-subtitle {
+
+    color: var(--muted);
+
+    font-size: 16px;
+
+    margin-top: 7px;
+}
+
+.date-box {
+
+    background: white;
+
+    border: 1px solid var(--border);
+
+    border-radius: 12px;
+
+    padding: 12px 17px;
+
+    color: var(--muted);
+
+    font-size: 14px;
+}
+
+
+/* =========================================================
+   PAGE SYSTEM
+   ========================================================= */
+
+.page {
+
+    display: none;
+
+    animation: fadeIn .25s ease;
+}
+
+.page.active {
+
+    display: block;
+}
+
+@keyframes fadeIn {
+
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+/* =========================================================
+   DASHBOARD HERO
+   ========================================================= */
+
+.hero {
+
+    background:
+        radial-gradient(
+            circle at 85% 25%,
+            rgba(121,106,241,.35),
+            transparent 35%
+        ),
+        linear-gradient(
+            135deg,
+            #1b2443,
+            #121a32
+        );
+
+    color: white;
+
+    border-radius: 22px;
+
+    padding: 35px;
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin-bottom: 27px;
+
+    overflow: hidden;
+
+    position: relative;
+}
+
+.hero h2 {
+
+    font-family: "Space Grotesk";
+
+    font-size: 30px;
+
+    margin-bottom: 10px;
+}
+
+.hero p {
+
+    color: #c1c8db;
+
+    max-width: 620px;
+
+    line-height: 1.6;
+
+    font-size: 16px;
+}
+
+.hero button {
+
+    border: none;
+
+    background: white;
+
+    color: #5142cf;
+
+    padding: 15px 22px;
+
+    border-radius: 12px;
+
+    font-size: 16px;
+
+    font-weight: 700;
+
+    margin-top: 22px;
+}
+
+.hero-icon {
+
+    font-size: 110px;
+
+    opacity: .18;
+
+    padding-right: 50px;
+}
+
+
+/* =========================================================
+   METRICS
+   ========================================================= */
+
+.metrics {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, 1fr);
+
+    gap: 18px;
+
+    margin-bottom: 27px;
+}
+
+.metric {
+
+    background: white;
+
+    border: 1px solid var(--border);
+
+    border-radius: 17px;
+
+    padding: 23px;
+
+    box-shadow:
+        0 5px 18px rgba(25,35,65,.04);
+}
+
+.metric-top {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+}
+
+.metric-icon {
+
+    width: 45px;
+
+    height: 45px;
+
+    border-radius: 12px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    background: #efedff;
+
+    font-size: 21px;
+}
+
+.metric-label {
+
+    color: var(--muted);
+
+    font-size: 14px;
+
+    font-weight: 600;
+
+    margin-top: 18px;
+}
+
+.metric-value {
+
+    font-family: "Space Grotesk";
+
+    font-size: 32px;
+
+    font-weight: 700;
+
+    margin-top: 5px;
+}
+
+
+/* =========================================================
+   CARDS
+   ========================================================= */
+
+.card {
+
+    background: white;
+
+    border: 1px solid var(--border);
+
+    border-radius: 18px;
+
+    padding: 25px;
+
+    box-shadow:
+        0 5px 18px rgba(25,35,65,.04);
+
+    margin-bottom: 25px;
+}
+
+.card-title {
+
+    font-family: "Space Grotesk";
+
+    font-size: 20px;
+
+    font-weight: 700;
+
+    margin-bottom: 5px;
+}
+
+.card-subtitle {
+
+    color: var(--muted);
+
+    font-size: 14px;
+
+    margin-bottom: 22px;
+}
+
+
+/* =========================================================
+   DASHBOARD GRID
+   ========================================================= */
+
+.dashboard-grid {
+
+    display: grid;
+
+    grid-template-columns: 1.2fr .8fr;
+
+    gap: 22px;
+}
+
+
+/* =========================================================
+   WORKFLOW
+   ========================================================= */
+
+.workflow {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 7px;
+}
+
+.step {
+
+    flex: 1;
+
+    text-align: center;
+}
+
+.step-icon {
+
+    width: 48px;
+
+    height: 48px;
+
+    border-radius: 50%;
+
+    margin: auto;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    background: #efedff;
+
+    font-size: 20px;
+}
+
+.step span {
+
+    display: block;
+
+    margin-top: 9px;
+
+    font-size: 12px;
+
+    font-weight: 600;
+}
+
+.workflow-line {
+
+    height: 2px;
+
+    flex: .35;
+
+    background: #dfe2eb;
+}
+
+
+/* =========================================================
+   FORM
+   ========================================================= */
+
+.form-grid {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, 1fr);
+
+    gap: 20px;
+}
+
+.form-group {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 8px;
+}
+
+.form-group.full {
+
+    grid-column: 1 / -1;
+}
+
+.form-group label {
+
+    font-size: 15px;
+
+    font-weight: 700;
+}
+
+.form-group input,
+.form-group select {
+
+    width: 100%;
+
+    border: 1px solid #dce1eb;
+
+    border-radius: 11px;
+
+    padding: 14px 15px;
+
+    font-size: 16px;
+
+    outline: none;
+
+    background: #fbfcfe;
+
+    transition: .2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+
+    border-color: var(--primary);
+
+    box-shadow:
+        0 0 0 3px rgba(101,87,232,.10);
+
+    background: white;
+}
+
+.form-help {
+
+    color: #8a92a5;
+
+    font-size: 12px;
+}
+
+.submit-btn {
+
+    border: none;
+
+    background:
+        linear-gradient(
+            135deg,
+            #6959e8,
+            #5141d0
+        );
+
+    color: white;
+
+    padding: 16px 26px;
+
+    border-radius: 12px;
+
+    font-size: 17px;
+
+    font-weight: 700;
+
+    margin-top: 25px;
+
+    box-shadow:
+        0 8px 18px rgba(90,73,213,.25);
+}
+
+.submit-btn:hover {
+
+    transform: translateY(-1px);
+}
+
+
+/* =========================================================
+   AI RESULT
+   ========================================================= */
+
+.result {
+
+    display: none;
+
+    margin-top: 25px;
+
+    border-radius: 18px;
+
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+}
+
+.result.show {
+
+    display: block;
+}
+
+.result-header {
+
+    padding: 22px 25px;
+
+    background: #171f39;
+
+    color: white;
+}
+
+.result-header h3 {
+
+    font-family: "Space Grotesk";
+
+    font-size: 21px;
+}
+
+.result-header p {
+
+    color: #aeb7ce;
+
+    margin-top: 5px;
+
+    font-size: 14px;
+}
+
+.result-body {
+
+    padding: 25px;
+
+    background: white;
+}
+
+.score-box {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 20px;
+
+    margin-bottom: 22px;
+}
+
+.score-circle {
+
+    width: 90px;
+
+    height: 90px;
+
+    border-radius: 50%;
+
+    background: #efedff;
+
+    color: #5748d7;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-family: "Space Grotesk";
+
+    font-size: 26px;
+
+    font-weight: 700;
+}
+
+.priority-badge {
+
+    display: inline-block;
+
+    padding: 7px 13px;
+
+    border-radius: 30px;
+
+    font-size: 13px;
+
+    font-weight: 800;
+
+    margin-top: 8px;
+}
+
+.priority-critical {
+
+    background: #ffe5e5;
+
+    color: #d94747;
+}
+
+.priority-high {
+
+    background: #fff0dd;
+
+    color: #d17c20;
+}
+
+.priority-medium {
+
+    background: #eeeaff;
+
+    color: #5e4ed3;
+}
+
+.priority-low {
+
+    background: #e4f7ed;
+
+    color: #21925f;
+}
+
+.reason-box {
+
+    background: #f7f8fc;
+
+    border-radius: 13px;
+
+    padding: 18px;
+
+    line-height: 1.6;
+
+    color: #4e566a;
+
+    font-size: 15px;
+
+    margin-bottom: 20px;
+}
+
+.ngo-box {
+
+    border: 1px solid #ddd9ff;
+
+    background: #f7f5ff;
+
+    border-radius: 14px;
+
+    padding: 20px;
+}
+
+.ngo-box h4 {
+
+    color: #5141ce;
+
+    font-size: 13px;
+
+    text-transform: uppercase;
+
+    letter-spacing: .7px;
+
+    margin-bottom: 8px;
+}
+
+.ngo-name {
+
+    font-family: "Space Grotesk";
+
+    font-size: 20px;
+
+    font-weight: 700;
+}
+
+.ngo-location {
+
+    color: #747c90;
+
+    margin-top: 4px;
+
+    font-size: 14px;
+}
+
+
+/* =========================================================
+   TABLE
+   ========================================================= */
+
+.table-wrapper {
+
+    overflow-x: auto;
+}
+
+table {
+
+    width: 100%;
+
+    border-collapse: collapse;
+
+    min-width: 900px;
+}
+
+th {
+
+    background: #f7f8fb;
+
+    color: #70788d;
+
+    text-transform: uppercase;
+
+    letter-spacing: .6px;
+
+    font-size: 12px;
+
+    font-weight: 700;
+}
+
+th,
+td {
+
+    padding: 16px 15px;
+
+    text-align: left;
+
+    border-bottom: 1px solid #edf0f4;
+}
+
+td {
+
+    font-size: 14px;
+
+    color: #3d4558;
+}
+
+.status-select {
+
+    border: 1px solid #d9deea;
+
+    background: white;
+
+    padding: 8px 10px;
+
+    border-radius: 8px;
+
+    font-size: 13px;
+}
+
+.empty {
+
+    text-align: center;
+
+    padding: 55px;
+
+    color: var(--muted);
+}
+
+
+/* =========================================================
+   ABOUT / INFO
+   ========================================================= */
+
+.info-grid {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, 1fr);
+
+    gap: 20px;
+}
+
+.info-card {
+
+    background: white;
+
+    border: 1px solid var(--border);
+
+    border-radius: 17px;
+
+    padding: 25px;
+}
+
+.info-card-icon {
+
+    font-size: 32px;
+
+    margin-bottom: 16px;
+}
+
+.info-card h3 {
+
+    font-family: "Space Grotesk";
+
+    font-size: 19px;
+
+    margin-bottom: 9px;
+}
+
+.info-card p {
+
+    color: var(--muted);
+
+    line-height: 1.6;
+
+    font-size: 14px;
+}
+
+
+/* =========================================================
+   TOAST
+   ========================================================= */
+
+.toast {
+
+    position: fixed;
+
+    right: 25px;
+
+    bottom: 25px;
+
+    background: #171f39;
+
+    color: white;
+
+    padding: 16px 20px;
+
+    border-radius: 12px;
+
+    box-shadow:
+        0 10px 30px rgba(0,0,0,.2);
+
+    display: none;
+
+    z-index: 100;
+
+    font-size: 14px;
+}
+
+.toast.show {
+
+    display: block;
+
+    animation: fadeIn .25s ease;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media(max-width: 1100px) {
+
+    .metrics {
+
+        grid-template-columns:
+            repeat(2, 1fr);
+    }
+
+    .dashboard-grid {
+
+        grid-template-columns: 1fr;
+    }
+
+    .info-grid {
+
+        grid-template-columns: 1fr;
+    }
+}
+
+@media(max-width: 800px) {
+
+    .sidebar {
+
+        position: relative;
+
+        width: 100%;
+
+        min-height: auto;
+    }
+
+    .sidebar-bottom {
+
+        display: none;
+    }
+
+    .app {
+
+        display: block;
+    }
+
+    .main {
+
+        margin-left: 0;
+
+        width: 100%;
+
+        padding: 25px 18px 50px;
+    }
+
+    .form-grid {
+
+        grid-template-columns: 1fr;
+    }
+
+    .form-group.full {
+
+        grid-column: auto;
+    }
+
+    .hero {
+
+        padding: 25px;
+    }
+
+    .hero-icon {
+
+        display: none;
+    }
+
+    .hero h2 {
+
+        font-size: 25px;
+    }
+
+    .page-title {
+
+        font-size: 28px;
+    }
+}
+
+@media(max-width: 500px) {
+
+    .metrics {
+
+        grid-template-columns: 1fr;
+    }
+
+    .topbar {
+
+        align-items: flex-start;
+
+        flex-direction: column;
+    }
+
+    .workflow {
+
+        flex-direction: column;
+    }
+
+    .workflow-line {
+
+        width: 2px;
+
+        height: 20px;
+
+        flex: none;
+    }
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+<div class="app">
+
+
+<!-- ======================================================
+     SIDEBAR
+====================================================== -->
+
+<aside class="sidebar">
+
+    <div class="logo">
+
+        <div class="logo-icon">
+            🍲
+        </div>
+
+        <div>
+
+            <div class="logo-title">
+                Food Rescue AI
+            </div>
+
+            <div class="logo-subtitle">
+                Smart Food Redistribution
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="menu-title">
+        Main Menu
+    </div>
+
+
+    <nav class="nav">
+
+        <button
+            id="nav-dashboard"
+            class="active"
+            onclick="showPage('dashboard')"
+        >
+            <span>📊</span>
+            Dashboard
+        </button>
+
+
+        <button
+            id="nav-donation"
+            onclick="showPage('donation')"
+        >
+            <span>➕</span>
+            New Donation
+        </button>
+
+
+        <button
+            id="nav-records"
+            onclick="showPage('records')"
+        >
+            <span>📋</span>
+            Donation Records
+        </button>
+
+
+        <button
+            id="nav-about"
+            onclick="showPage('about')"
+        >
+            <span>🤖</span>
+            How It Works
+        </button>
+
+    </nav>
+
+
+    <div class="sidebar-bottom">
+
+        <strong>🌱 Every Meal Matters</strong>
+
+        <span>
+            Turn surplus food into meaningful impact.
+        </span>
+
+    </div>
+
+</aside>
+
+
+<!-- ======================================================
+     MAIN
+====================================================== -->
+
+<main class="main">
+
+
+<!-- ======================================================
+     DASHBOARD
+====================================================== -->
+
+<section
+    id="dashboard"
+    class="page active"
+>
+
+    <div class="topbar">
+
+        <div>
+
+            <div class="page-title">
+                Dashboard
+            </div>
+
+            <div class="page-subtitle">
+                Monitor food donations, urgency and community impact.
+            </div>
+
+        </div>
+
+        <div class="date-box">
+            📅 <span id="today"></span>
+        </div>
+
+    </div>
+
+
+    <div class="hero">
+
+        <div>
+
+            <h2>
+                Make Every Meal Count 🌱
+            </h2>
+
+            <p>
+                Food Rescue AI analyzes donated food,
+                determines redistribution urgency and
+                recommends the most suitable NGO for
+                faster community delivery.
+            </p>
+
+            <button onclick="showPage('donation')">
+                + Create New Donation
+            </button>
+
+        </div>
+
+        <div class="hero-icon">
+            🍲
+        </div>
+
+    </div>
+
+
+    <!-- METRICS -->
+
+    <div class="metrics">
+
+        <div class="metric">
+
+            <div class="metric-top">
+
+                <div class="metric-icon">
+                    🍱
+                </div>
+
+            </div>
+
+            <div class="metric-label">
+                Total Donations
+            </div>
+
+            <div
+                class="metric-value"
+                id="totalDonations"
+            >
+                0
+            </div>
+
+        </div>
+
+
+        <div class="metric">
+
+            <div class="metric-top">
+
+                <div class="metric-icon">
+                    🚚
+                </div>
+
+            </div>
+
+            <div class="metric-label">
+                Delivered
+            </div>
+
+            <div
+                class="metric-value"
+                id="deliveredDonations"
+            >
+                0
+            </div>
+
+        </div>
+
+
+        <div class="metric">
+
+            <div class="metric-top">
+
+                <div class="metric-icon">
+                    ⏳
+                </div>
+
+            </div>
+
+            <div class="metric-label">
+                Pending
+            </div>
+
+            <div
+                class="metric-value"
+                id="pendingDonations"
+            >
+                0
+            </div>
+
+        </div>
+
+
+        <div class="metric">
+
+            <div class="metric-top">
+
+                <div class="metric-icon">
+                    🚨
+                </div>
+
+            </div>
+
+            <div class="metric-label">
+                Critical Donations
+            </div>
+
+            <div
+                class="metric-value"
+                id="criticalDonations"
+            >
+                0
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- DASHBOARD GRID -->
+
+    <div class="dashboard-grid">
+
+
+        <div class="card">
+
+            <div class="card-title">
+                Donation Rescue Workflow
+            </div>
+
+            <div class="card-subtitle">
+                From surplus food to community impact.
+            </div>
+
+
+            <div class="workflow">
+
+                <div class="step">
+
+                    <div class="step-icon">
+                        🍱
+                    </div>
+
+                    <span>
+                        Donation
+                    </span>
+
+                </div>
+
+                <div class="workflow-line"></div>
+
+
+                <div class="step">
+
+                    <div class="step-icon">
+                        🧠
+                    </div>
+
+                    <span>
+                        AI Analysis
+                    </span>
+
+                </div>
+
+                <div class="workflow-line"></div>
+
+
+                <div class="step">
+
+                    <div class="step-icon">
+                        🎯
+                    </div>
+
+                    <span>
+                        Priority
+                    </span>
+
+                </div>
+
+                <div class="workflow-line"></div>
+
+
+                <div class="step">
+
+                    <div class="step-icon">
+                        🤝
+                    </div>
+
+                    <span>
+                        NGO Match
+                    </span>
+
+                </div>
+
+                <div class="workflow-line"></div>
+
+
+                <div class="step">
+
+                    <div class="step-icon">
+                        🚚
+                    </div>
+
+                    <span>
+                        Delivery
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="card-title">
+                Community Impact
+            </div>
+
+            <div class="card-subtitle">
+                Total food quantity rescued.
+            </div>
+
+            <div
+                style="
+                    font-family:'Space Grotesk';
+                    font-size:42px;
+                    font-weight:700;
+                    margin-top:20px;
+                "
+                id="foodQuantity"
+            >
+                0
+            </div>
+
+            <div
+                style="
+                    color:#7b8397;
+                    font-size:14px;
+                    margin-top:5px;
+                "
+            >
+                units of food recorded
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- ======================================================
+     NEW DONATION
+====================================================== -->
+
+<section
+    id="donation"
+    class="page"
+>
+
+    <div class="topbar">
+
+        <div>
+
+            <div class="page-title">
+                Create Donation
+            </div>
+
+            <div class="page-subtitle">
+                Enter surplus food details for AI-powered prioritization.
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="card">
+
+        <div class="card-title">
+            🥗 Food Donation Details
+        </div>
+
+        <div class="card-subtitle">
+            Provide accurate information so the system can determine urgency and recommend an NGO.
+        </div>
+
+
+        <form id="donationForm">
+
+
+            <div class="form-grid">
+
+
+                <div class="form-group">
+
+                    <label>
+                        Donor Name
+                    </label>
+
+                    <input
+                        id="donor_name"
+                        type="text"
+                        placeholder="Example: ABC Restaurant"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Food Name
+                    </label>
+
+                    <input
+                        id="food_name"
+                        type="text"
+                        placeholder="Example: Vegetable Biryani"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Food Type
+                    </label>
+
+                    <select
+                        id="food_type"
+                        required
+                    >
+
+                        <option value="">
+                            Select food type
+                        </option>
+
+                        <option value="cooked">
+                            Cooked Food
+                        </option>
+
+                        <option value="vegetarian">
+                            Vegetarian
+                        </option>
+
+                        <option value="bakery">
+                            Bakery
+                        </option>
+
+                        <option value="fruits">
+                            Fruits
+                        </option>
+
+                        <option value="rice">
+                            Rice / Grains
+                        </option>
+
+                        <option value="mixed">
+                            Mixed Food
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Quantity
+                    </label>
+
+                    <input
+                        id="quantity"
+                        type="number"
+                        min="1"
+                        placeholder="Example: 50"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Unit
+                    </label>
+
+                    <select
+                        id="unit"
+                        required
+                    >
+
+                        <option value="Meals">
+                            Meals
+                        </option>
+
+                        <option value="Kg">
+                            Kg
+                        </option>
+
+                        <option value="Packets">
+                            Packets
+                        </option>
+
+                        <option value="Boxes">
+                            Boxes
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Freshness Remaining
+                    </label>
+
+                    <input
+                        id="freshness_hours"
+                        type="number"
+                        min="0"
+                        placeholder="Example: 4"
+                        required
+                    >
+
+                    <span class="form-help">
+                        Approximate number of hours the food remains suitable for redistribution.
+                    </span>
+
+                </div>
+
+
+                <div class="form-group full">
+
+                    <label>
+                        Pickup Location
+                    </label>
+
+                    <input
+                        id="pickup_location"
+                        type="text"
+                        placeholder="Example: Kukatpally, Hyderabad"
+                        required
+                    >
+
+                </div>
+
+
+            </div>
+
+
+            <button
+                class="submit-btn"
+                type="submit"
+            >
+                🤖 Analyze & Create Donation
+            </button>
+
+        </form>
+
+
+        <!-- AI RESULT -->
+
+        <div
+            id="result"
+            class="result"
+        >
+
+            <div class="result-header">
+
+                <h3>
+                    ✨ AI Donation Analysis Complete
+                </h3>
+
+                <p>
+                    Your donation has been evaluated for urgency and NGO matching.
+                </p>
+
+            </div>
+
+
+            <div class="result-body">
+
+
+                <div class="score-box">
+
+                    <div
+                        class="score-circle"
+                        id="score"
+                    >
+                        0
+                    </div>
+
+                    <div>
+
+                        <strong>
+                            Priority Score
+                        </strong>
+
+                        <br>
+
+                        <span
+                            id="level"
+                            class="priority-badge"
+                        >
+                            -
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <div class="reason-box">
+
+                    <strong>
+                        🧠 Why this priority?
+                    </strong>
+
+                    <p
+                        id="reason"
+                        style="margin-top:8px;"
+                    ></p>
+
+                </div>
+
+
+                <div class="ngo-box">
+
+                    <h4>
+                        Recommended NGO
+                    </h4>
+
+                    <div
+                        class="ngo-name"
+                        id="ngoName"
+                    ></div>
+
+                    <div
+                        class="ngo-location"
+                        id="ngoLocation"
+                    ></div>
+
+                </div>
+
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- ======================================================
+     RECORDS
+====================================================== -->
+
+<section
+    id="records"
+    class="page"
+>
+
+    <div class="topbar">
+
+        <div>
+
+            <div class="page-title">
+                Donation Records
+            </div>
+
+            <div class="page-subtitle">
+                Track every donation and its delivery progress.
+            </div>
+
+        </div>
+
+        <button
+            class="submit-btn"
+            style="margin-top:0;"
+            onclick="loadRecords()"
+        >
+            🔄 Refresh
+        </button>
+
+    </div>
+
+
+    <div class="card">
+
+        <div class="card-title">
+            📋 Donation History
+        </div>
+
+        <div class="card-subtitle">
+            Manage pickup, transportation and delivery status.
+        </div>
+
+
+        <div class="table-wrapper">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>ID</th>
+
+                        <th>Food</th>
+
+                        <th>Donor</th>
+
+                        <th>Quantity</th>
+
+                        <th>Priority</th>
+
+                        <th>NGO</th>
+
+                        <th>Status</th>
+
+                        <th>Date</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="recordsBody">
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- ======================================================
+     ABOUT
+====================================================== -->
+
+<section
+    id="about"
+    class="page"
+>
+
+    <div class="topbar">
+
+        <div>
+
+            <div class="page-title">
+                How Food Rescue AI Works
+            </div>
+
+            <div class="page-subtitle">
+                A smart workflow for reducing food waste.
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="info-grid">
+
+
+        <div class="info-card">
+
+            <div class="info-card-icon">
+                📝
+            </div>
+
+            <h3>
+                1. Create Donation
+            </h3>
+
+            <p>
+                Donors enter information such as food type,
+                quantity, freshness and pickup location.
+            </p>
+
+        </div>
+
+
+        <div class="info-card">
+
+            <div class="info-card-icon">
+                🧠
+            </div>
+
+            <h3>
+                2. AI Priority Analysis
+            </h3>
+
+            <p>
+                The system evaluates freshness, quantity and
+                food type to calculate a priority score from 0 to 100.
+            </p>
+
+        </div>
+
+
+        <div class="info-card">
+
+            <div class="info-card-icon">
+                🎯
+            </div>
+
+            <h3>
+                3. Priority Level
+            </h3>
+
+            <p>
+                Donations are classified as Critical, High,
+                Medium or Low based on their urgency.
+            </p>
+
+        </div>
+
+
+        <div class="info-card">
+
+            <div class="info-card-icon">
+                🤝
+            </div>
+
+            <h3>
+                4. NGO Recommendation
+            </h3>
+
+            <p>
+                The system recommends an NGO based on food
+                compatibility, capacity and location.
+            </p>
+
+        </div>
+
+
+        <div class="info-card">
+
+            <div class="info-card-icon">
+                🚚
+            </div>
+
+            <h3>
+                5. Delivery Tracking
+            </h3>
+
+            <p>
+                Donation status can progress from Pending Pickup
+                through transportation to Delivered and Completed.
+            </p>
+
+        </div>
+
+
+        <div class="info-card">
+
+            <div class="info-card-icon">
+                🌱
+            </div>
+
+            <h3>
+                6. Social Impact
+            </h3>
+
+            <p>
+                The dashboard tracks donations, deliveries,
+                critical food and total rescued quantity.
+            </p>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+</main>
+
+</div>
+
+
+<div
+    id="toast"
+    class="toast"
+></div>
+
+
+<script>
+
+/* =========================================================
+   DATE
+========================================================= */
+
+document.getElementById("today").textContent =
+    new Date().toLocaleDateString(
+        "en-IN",
+        {
+            day: "2-digit",
+            month: "short",
+            year: "numeric"
+        }
+    );
+
+
+/* =========================================================
+   PAGE NAVIGATION
+========================================================= */
+
+function showPage(pageName) {
+
+    document.querySelectorAll(".page")
+        .forEach(function(page) {
+
+            page.classList.remove("active");
+
+        });
+
+
+    document.querySelectorAll(".nav button")
+        .forEach(function(button) {
+
+            button.classList.remove("active");
+
+        });
+
+
+    const selectedPage =
+        document.getElementById(pageName);
+
+    if (selectedPage) {
+
+        selectedPage.classList.add("active");
+
+    }
+
+
+    const selectedNav =
+        document.getElementById(
+            "nav-" + pageName
+        );
+
+    if (selectedNav) {
+
+        selectedNav.classList.add("active");
+
+    }
+
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+
+
+    if (pageName === "dashboard") {
+
+        loadMetrics();
+
+    }
+
+
+    if (pageName === "records") {
+
+        loadRecords();
+
+    }
+
+}
+
+
+/* =========================================================
+   TOAST
+========================================================= */
+
+function showToast(message) {
+
+    const toast =
+        document.getElementById("toast");
+
+    toast.textContent = message;
+
+    toast.classList.add("show");
+
+    setTimeout(function() {
+
+        toast.classList.remove("show");
+
+    }, 3000);
+
+}
+
+
+/* =========================================================
+   LOAD METRICS
+========================================================= */
+
+async function loadMetrics() {
+
+    try {
+
+        const response =
+            await fetch("/api/metrics");
+
+        const data =
+            await response.json();
+
+
+        document.getElementById(
+            "totalDonations"
+        ).textContent =
+            data.total_donations;
+
+
+        document.getElementById(
+            "deliveredDonations"
+        ).textContent =
+            data.delivered_donations;
+
+
+        document.getElementById(
+            "pendingDonations"
+        ).textContent =
+            data.pending_donations;
+
+
+        document.getElementById(
+            "criticalDonations"
+        ).textContent =
+            data.critical_donations;
+
+
+        document.getElementById(
+            "foodQuantity"
+        ).textContent =
+            data.food_quantity;
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+    }
+
+}
+
+
+/* =========================================================
+   CREATE DONATION
+========================================================= */
+
+document.getElementById(
+    "donationForm"
+).addEventListener(
+    "submit",
+    async function(event) {
+
+        event.preventDefault();
+
+
+        const button =
+            this.querySelector(
+                ".submit-btn"
+            );
+
+
+        button.disabled = true;
+
+        button.textContent =
+            "⏳ Analyzing Donation...";
+
+
+        const payload = {
+
+            donor_name:
+                document.getElementById(
+                    "donor_name"
+                ).value,
+
+            food_name:
+                document.getElementById(
+                    "food_name"
+                ).value,
+
+            food_type:
+                document.getElementById(
+                    "food_type"
+                ).value,
+
+            quantity:
+                Number(
+                    document.getElementById(
+                        "quantity"
+                    ).value
+                ),
+
+            unit:
+                document.getElementById(
+                    "unit"
+                ).value,
+
+            freshness_hours:
+                Number(
+                    document.getElementById(
+                        "freshness_hours"
+                    ).value
+                ),
+
+            pickup_location:
+                document.getElementById(
+                    "pickup_location"
+                ).value
+
+        };
+
+
+        try {
+
+            const response =
+                await fetch(
+                    "/api/donations",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                        body:
+                            JSON.stringify(
+                                payload
+                            )
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.detail ||
+                    "Unable to create donation."
+                );
+
+            }
+
+
+            /* Show result */
+
+            document.getElementById(
+                "result"
+            ).classList.add("show");
+
+
+            document.getElementById(
+                "score"
+            ).textContent =
+                data.priority_score;
+
+
+            const level =
+                document.getElementById(
+                    "level"
+                );
+
+
+            level.textContent =
+                data.priority_level;
+
+
+            level.className =
+                "priority-badge priority-" +
+                data.priority_level.toLowerCase();
+
+
+            document.getElementById(
+                "reason"
+            ).textContent =
+                data.priority_reason;
+
+
+            document.getElementById(
+                "ngoName"
+            ).textContent =
+                data.ngo.name;
+
+
+            document.getElementById(
+                "ngoLocation"
+            ).textContent =
+                "📍 " +
+                data.ngo.location;
+
+
+            showToast(
+                "Donation created successfully! 🎉"
+            );
+
+
+            loadMetrics();
+
+
+            document.getElementById(
+                "donationForm"
+            ).reset();
+
+        }
+
+        catch (error) {
+
+            showToast(
+                "Error: " + error.message
+            );
+
+        }
+
+        finally {
+
+            button.disabled = false;
+
+            button.textContent =
+                "🤖 Analyze & Create Donation";
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   LOAD RECORDS
+========================================================= */
+
+async function loadRecords() {
+
+    const body =
+        document.getElementById(
+            "recordsBody"
+        );
+
+
+    body.innerHTML = `
+        <tr>
+            <td
+                colspan="8"
+                class="empty"
+            >
+                Loading donation records...
+            </td>
+        </tr>
+    `;
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/donations"
+            );
+
+        const records =
+            await response.json();
+
+
+        if (records.length === 0) {
+
+            body.innerHTML = `
+                <tr>
+                    <td
+                        colspan="8"
+                        class="empty"
+                    >
+                        🍱 No donations yet.
+                        Create your first donation!
+                    </td>
+                </tr>
+            `;
+
+            return;
+
+        }
+
+
+        body.innerHTML =
+            records.map(function(item) {
+
+                const priorityClass =
+                    item.priority_level.toLowerCase();
+
+
+                return `
+
+                    <tr>
+
+                        <td>
+                            #${item.id}
+                        </td>
+
+                        <td>
+                            <strong>
+                                ${escapeHtml(item.food_name)}
+                            </strong>
+                            <br>
+                            <span
+                                style="
+                                    color:#8a92a5;
+                                    font-size:12px;
+                                "
+                            >
+                                ${escapeHtml(item.food_type)}
+                            </span>
+                        </td>
+
+                        <td>
+                            ${escapeHtml(item.donor_name)}
+                        </td>
+
+                        <td>
+                            ${item.quantity}
+                            ${escapeHtml(item.unit)}
+                        </td>
+
+                        <td>
+
+                            <span
+                                class="
+                                    priority-badge
+                                    priority-${priorityClass}
+                                "
+                            >
+                                ${item.priority_level}
+                                ·
+                                ${item.priority_score}
+                            </span>
+
+                        </td>
+
+                        <td>
+
+                            ${escapeHtml(item.ngo_name)}
+
+                            <br>
+
+                            <span
+                                style="
+                                    color:#8a92a5;
+                                    font-size:12px;
+                                "
+                            >
+                                📍 ${escapeHtml(item.ngo_location)}
+                            </span>
+
+                        </td>
+
+                        <td>
+
+                            <select
+                                class="status-select"
+                                onchange="
+                                    updateStatus(
+                                        ${item.id},
+                                        this.value
+                                    )
+                                "
+                            >
+
+                                ${statusOptions(
+                                    item.status
+                                )}
+
+                            </select>
+
+                        </td>
+
+                        <td>
+                            ${item.created_at}
+                        </td>
+
+                    </tr>
+
+                `;
+
+            }).join("");
+
+    }
+
+    catch (error) {
+
+        body.innerHTML = `
+            <tr>
+                <td
+                    colspan="8"
+                    class="empty"
+                >
+                    Unable to load records.
+                </td>
+            </tr>
+        `;
+
+    }
+
+}
+
+
+/* =========================================================
+   STATUS OPTIONS
+========================================================= */
+
+function statusOptions(current) {
+
+    const statuses = [
+
+        "Pending Pickup",
+        "Picked Up",
+        "In Transit",
+        "Delivered",
+        "Completed"
+
+    ];
+
+
+    return statuses.map(function(status) {
+
+        return `
+            <option
+                value="${status}"
+                ${status === current ? "selected" : ""}
+            >
+                ${status}
+            </option>
+        `;
+
+    }).join("");
+
+}
+
+
+/* =========================================================
+   UPDATE STATUS
+========================================================= */
+
+async function updateStatus(
+    id,
+    status
+) {
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/donations/${id}/status`,
+                {
+                    method: "PUT",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+                            status: status
+                        })
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail ||
+                "Status update failed."
+            );
+
+        }
+
+
+        showToast(
+            "Donation status updated successfully."
+        );
+
+
+        loadMetrics();
+
+    }
+
+    catch (error) {
+
+        showToast(
+            "Error: " + error.message
+        );
+
+        loadRecords();
+
+    }
+
+}
+
+
+/* =========================================================
+   HTML ESCAPE
+========================================================= */
+
+function escapeHtml(value) {
+
+    if (value === null ||
+        value === undefined) {
+
+        return "";
+
+    }
+
+    return String(value)
+
+        .replace(/&/g, "&amp;")
+
+        .replace(/</g, "&lt;")
+
+        .replace(/>/g, "&gt;")
+
+        .replace(/"/g, "&quot;")
+
+        .replace(/'/g, "&#039;");
+
+}
+
+
+/* =========================================================
+   INITIAL LOAD
+========================================================= */
+
+loadMetrics();
+
+</script>
+
+</body>
+
+</html>
+"""
+
+
+# ============================================================
+# FRONTEND ROUTE
+# ============================================================
+
+@app.get("/", response_class=HTMLResponse)
+def home():
+    return HTML
+
+
+# ============================================================
+# RENDER ENTRY POINT
+# ============================================================
 
 if __name__ == "__main__":
 
