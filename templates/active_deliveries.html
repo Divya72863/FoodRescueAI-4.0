@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Active Deliveries</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+
+</head>
+
+<body>
+
+{% include "partials/navbar.html" %}
+
+<div class="dashboard">
+
+    <div class="page-header">
+
+        <span class="badge">
+            DELIVERY
+        </span>
+
+        <h1>
+            Active Deliveries 🚚
+        </h1>
+
+        <p>
+            Coordinate accepted food donations
+            through pickup and delivery.
+        </p>
+
+    </div>
+
+
+    {% with messages = get_flashed_messages(
+        with_categories=true
+    ) %}
+
+        {% for category, message in messages %}
+
+            <div class="alert {{ category }}">
+                {{ message }}
+            </div>
+
+        {% endfor %}
+
+    {% endwith %}
+
+
+    {% if donations %}
+
+        <div class="donation-list">
+
+        {% for donation in donations %}
+
+            <div class="delivery-card">
+
+                <div>
+
+                    <span class="delivery-id">
+                        DONATION #{{ donation[0] }}
+                    </span>
+
+                    <h2>
+                        {{ donation[1] }}
+                    </h2>
+
+                    <p>
+                        {{ donation[2] }} meals
+                    </p>
+
+                    <p>
+                        NGO:
+                        <strong>
+                            {{ donation[6] }}
+                        </strong>
+                    </p>
+
+                </div>
+
+
+                <div>
+
+                    <span class="status-badge">
+                        {{ donation[7] }}
+                    </span>
+
+
+                    {% if donation[7] == "Accepted" %}
+
+                    <form
+                        method="POST"
+                        action="{{ url_for(
+                            'pickup_donation',
+                            donation_id=donation[0]
+                        ) }}"
+                    >
+
+                        <button
+                            class="secondary-btn"
+                            type="submit">
+
+                            🚚 Pickup Completed
+
+                        </button>
+
+                    </form>
+
+                    {% elif donation[7] == "Picked Up" %}
+
+                    <form
+                        method="POST"
+                        action="{{ url_for(
+                            'deliver_donation',
+                            donation_id=donation[0]
+                        ) }}"
+                    >
+
+                        <button
+                            class="primary-btn"
+                            type="submit">
+
+                            ✅ Mark Delivered
+
+                        </button>
+
+                    </form>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <div class="empty-state">
+
+            <div>
+                🚚
+            </div>
+
+            <h2>
+                No Active Deliveries
+            </h2>
+
+            <p>
+                Accepted donations will appear here.
+            </p>
+
+        </div>
+
+    {% endif %}
+
+</div>
+
+</body>
+
+</html>
