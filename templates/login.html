@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Food Rescue AI 4.0</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+
+</head>
+
+<body class="login-page">
+
+<div class="login-container">
+
+    <div class="login-brand">
+
+      
+
+        <h1>Food Rescue AI 4.0</h1>
+
+        <p>
+            AI-Powered Intelligent Food Waste
+            Management & Redistribution System
+        </p>
+
+    </div>
+
+
+    <div class="login-card">
+
+        <h2>Welcome Back 👋</h2>
+
+        <p class="muted">
+            Sign in to continue to your dashboard.
+        </p>
+
+
+        {% with messages = get_flashed_messages(
+            with_categories=true
+        ) %}
+
+            {% for category, message in messages %}
+
+                <div class="alert {{ category }}">
+                    {{ message }}
+                </div>
+
+            {% endfor %}
+
+        {% endwith %}
+
+
+        <form method="POST"
+              action="{{ url_for('login') }}">
+
+            <label>Email</label>
+
+            <input
+                type="email"
+                name="email"
+                placeholder="you@example.com"
+                required
+            >
+
+
+            <label>Password</label>
+
+            <input
+                type="password"
+                name="password"
+                placeholder="Enter password"
+                required
+            >
+
+
+            <label>Login As</label>
+
+            <select name="role">
+
+                <option value="Donor">
+                    👤 Food Donor
+                </option>
+
+                <option value="NGO">
+                    🤝 NGO
+                </option>
+
+            </select>
+
+
+            <button class="primary-btn"
+                    type="submit">
+
+                Login →
+                
+            </button>
+
+        </form>
+
+
+        <div class="demo-note">
+
+            <strong>Prototype Login</strong>
+
+            <br>
+
+            Use any email and password
+            for this demonstration.
+
+        </div>
+
+    </div>
+
+
+    <div class="login-footer">
+
+        Food exists. People need it.
+        <br>
+        <strong>
+            The missing link is intelligent coordination.
+        </strong>
+
+    </div>
+
+</div>
+
+</body>
+
+</html>
