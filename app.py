@@ -1,8 +1,17 @@
-import streamlit as st
-import pandas as pd
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    session,
+    flash
+)
+
+from datetime import datetime, time
 
 from ai_engine import analyze_donation
-from ngo_data import recommend_ngo
+from ngo_data import recommend_ngo, NGOS
 from database import (
     create_database,
     add_donation,
@@ -10,15 +19,19 @@ from database import (
     mark_delivered
 )
 
+import sqlite3
+import os
+
 
 # ============================================================
-# PAGE CONFIG
+# FLASK CONFIGURATION
 # ============================================================
 
-st.set_page_config(
-    page_title="Food Rescue AI 4.0",
-    page_icon="🍱",
-    layout="wide"
+app = Flask(__name__)
+
+app.secret_key = os.environ.get(
+    "SECRET_KEY",
+    "food-rescue-ai-demo-secret"
 )
 
 
@@ -30,80 +43,31 @@ create_database()
 
 
 # ============================================================
-# SIDEBAR
+# HELPER FUNCTIONS
 # ============================================================
 
-st.sidebar.title("🍱 Food Rescue AI 4.0")
+def update_status(donation_id, status):
 
-st.sidebar.write(
-    "AI-Powered Intelligent Food Waste "
-    "Management & Redistribution System"
-)
-
-st.sidebar.divider()
-
-page = st.sidebar.radio(
-    "Navigation",
-    [
-        "🏠 Dashboard",
-        "🍱 Create Donation",
-        "🤖 AI Recommendation",
-        "📊 Impact Dashboard"
-    ]
-)
-
-
-# ============================================================
-# DASHBOARD
-# ============================================================
-
-if page == "🏠 Dashboard":
-
-    st.title("🍱 Food Rescue AI 4.0")
-
-    st.subheader(
-        "AI-Powered Intelligent Food Waste "
-        "Management & Redistribution System"
+    connection = sqlite3.connect(
+        "food_rescue.db"
     )
 
-    st.write(
-        "Connecting surplus food with organizations "
-        "that can redistribute it."
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        UPDATE donations
+        SET status = ?
+        WHERE id = ?
+        """,
+        (status, donation_id)
     )
 
-    st.divider()
+    connection.commit()
+    connection.close()
 
-    # --------------------------------------------------------
-    # WORKFLOW
-    # --------------------------------------------------------
 
-    st.subheader("🔄 How It Works")
-
-    col1, col2, col3, col4, col5 = st.columns(5)
-
-    with col1:
-        st.write("🍽️")
-        st.write("Surplus Food")
-
-    with col2:
-        st.write("→")
-
-    with col3:
-        st.write("🤖")
-        st.write("AI Analysis")
-
-    with col4:
-        st.write("→")
-
-    with col5:
-        st.write("🤝")
-        st.write("NGO Matching")
-
-    st.divider()
-
-    # --------------------------------------------------------
-    # METRICS
-    # --------------------------------------------------------
+def get_dashboard_stats():
 
     donations = get_donations()
 
@@ -114,575 +78,624 @@ if page == "🏠 Dashboard":
         for donation in donations
     )
 
+    pending = sum(
+        1
+        for donation in donations
+        if donation[7] == "Pending Pickup"
+    )
+
+    accepted = sum(
+        1
+        for donation in donations
+        if donation[7] == "Accepted"
+    )
+
+    picked_up = sum(
+        1
+        for donation in donations
+        if donation[7] == "Picked Up"
+    )
+
     delivered = sum(
         1
         for donation in donations
         if donation[7] == "Delivered"
     )
 
-    pending = total_donations - delivered
+    delivered_meals = sum(
+        donation[2]
+        for donation in donations
+        if donation[7] == "Delivered"
+    )
 
-    col1, col2, col3, col4 = st.columns(4)
+    return {
+        "total_donations": total_donations,
+        "total_meals": total_meals,
+        "pending": pending,
+        "accepted": accepted,
+        "picked_up": picked_up,
+        "delivered": delivered,
+        "delivered_meals": delivered_meals
+    }
 
-    with col1:
-        st.metric(
-            "🍱 Total Donations",
-            total_donations
+
+# ============================================================
+# LOGIN REQUIRED
+# ============================================================
+
+def login_required():
+
+    return "user" in session
+
+
+# ============================================================
+# HOME
+# ============================================================
+
+@app.route("/")
+def home():
+
+    if "user" in session:
+
+        if session["role"] == "Donor":
+            return redirect(
+                url_for("donor_dashboard")
+            )
+
+        return redirect(
+            url_for("ngo_dashboard")
         )
 
-    with col2:
-        st.metric(
-            "🍽️ Meals Rescued",
-            total_meals
+    return redirect(
+        url_for("login")
+    )
+
+
+# ============================================================
+# LOGIN
+# ============================================================
+
+@app.route(
+    "/login",
+    methods=["GET", "POST"]
+)
+def login():
+
+    if request.method == "POST":
+
+        email = request.form.get(
+            "email",
+            ""
+        ).strip()
+
+        password = request.form.get(
+            "password",
+            ""
         )
 
-    with col3:
-        st.metric(
-            "🚚 Deliveries",
-            delivered
+        role = request.form.get(
+            "role",
+            "Donor"
         )
 
-    with col4:
-        st.metric(
-            "⏳ Pending",
-            pending
+        if not email or not password:
+
+            flash(
+                "Please enter email and password.",
+                "error"
+            )
+
+            return redirect(
+                url_for("login")
+            )
+
+        # Prototype authentication.
+        # Any non-empty email/password works.
+
+        session["user"] = email
+        session["role"] = role
+
+        flash(
+            "Welcome to Food Rescue AI 4.0!",
+            "success"
         )
 
-    st.divider()
+        if role == "Donor":
 
-    # --------------------------------------------------------
-    # FEATURES
-    # --------------------------------------------------------
+            return redirect(
+                url_for("donor_dashboard")
+            )
 
-    st.subheader("🚀 Core Features")
-
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-
-        st.markdown("### 🤖 AI Priority Analysis")
-
-        st.write(
-            "Analyze preparation time, quantity, "
-            "storage condition and food type to "
-            "determine pickup priority."
+        return redirect(
+            url_for("ngo_dashboard")
         )
 
-    with col2:
+    return render_template(
+        "login.html"
+    )
 
-        st.markdown("### 🤝 Intelligent NGO Matching")
 
-        st.write(
-            "Match donations with suitable NGOs "
-            "using distance, capacity and current need."
+# ============================================================
+# LOGOUT
+# ============================================================
+
+@app.route("/logout")
+def logout():
+
+    session.clear()
+
+    flash(
+        "You have been logged out.",
+        "success"
+    )
+
+    return redirect(
+        url_for("login")
+    )
+
+
+# ============================================================
+# DONOR DASHBOARD
+# ============================================================
+
+@app.route("/donor")
+def donor_dashboard():
+
+    if not login_required():
+
+        return redirect(
+            url_for("login")
         )
 
-    with col3:
+    if session["role"] != "Donor":
 
-        st.markdown("### 📊 Impact Tracking")
-
-        st.write(
-            "Track donations, rescued meals and "
-            "completed deliveries."
+        return redirect(
+            url_for("ngo_dashboard")
         )
+
+    stats = get_dashboard_stats()
+
+    return render_template(
+        "donor_dashboard.html",
+        stats=stats,
+        user=session["user"]
+    )
 
 
 # ============================================================
 # CREATE DONATION
 # ============================================================
 
-elif page == "🍱 Create Donation":
+@app.route(
+    "/donation/create",
+    methods=["GET", "POST"]
+)
+def create_donation():
 
-    st.title("🍱 Create Food Donation")
+    if not login_required():
 
-    st.write(
-        "Enter the surplus food information below."
-    )
-
-    st.divider()
-
-    # --------------------------------------------------------
-    # DONATION FORM
-    # --------------------------------------------------------
-
-    food_name = st.text_input(
-        "Food Name",
-        placeholder="Example: Biryani"
-    )
-
-    quantity = st.number_input(
-        "Quantity / Meals",
-        min_value=1,
-        value=50,
-        step=1
-    )
-
-    preparation_time = st.time_input(
-        "Preparation Time"
-    )
-
-    storage_condition = st.selectbox(
-        "Storage Condition",
-        [
-            "Refrigerated",
-            "Room Temperature",
-            "Frozen"
-        ]
-    )
-
-    donor_location = st.selectbox(
-        "Donor Location",
-        [
-            "Hyderabad",
-            "Secunderabad",
-            "Kukatpally",
-            "Madhapur",
-            "Gachibowli",
-            "Begumpet"
-        ]
-    )
-
-    donor_type = st.selectbox(
-        "Donor Type",
-        [
-            "Restaurant",
-            "Hotel",
-            "Caterer",
-            "Event",
-            "Hostel",
-            "Supermarket",
-            "Other"
-        ]
-    )
-
-    st.divider()
-
-    # --------------------------------------------------------
-    # ANALYZE DONATION
-    # --------------------------------------------------------
-
-    if st.button(
-        "🤖 Analyze Donation & Find NGO",
-        use_container_width=True
-    ):
-
-        if not food_name.strip():
-
-            st.error(
-                "Please enter the food name."
-            )
-
-        else:
-
-            # AI ANALYSIS
-
-            result = analyze_donation(
-                food_name,
-                quantity,
-                preparation_time,
-                storage_condition
-            )
-
-            # NGO MATCHING
-
-            ngo, all_matches = recommend_ngo(
-                donor_location=donor_location,
-                quantity=quantity,
-                priority=result["priority"]
-            )
-
-            # SAVE DONATION
-
-            add_donation(
-                food_name,
-                quantity,
-                str(preparation_time),
-                storage_condition,
-                result["priority"],
-                ngo["name"]
-            )
-
-            # SAVE RESULTS
-
-            st.session_state["analysis"] = result
-
-            st.session_state["ngo"] = ngo
-
-            st.session_state["all_matches"] = all_matches
-
-            st.session_state["donor_location"] = donor_location
-
-            st.session_state["donor_type"] = donor_type
-
-            st.success(
-                "✅ Donation successfully analyzed!"
-            )
-
-            st.info(
-                "Go to 'AI Recommendation' "
-                "to view the complete result."
-            )
-
-
-# ============================================================
-# AI RECOMMENDATION
-# ============================================================
-
-elif page == "🤖 AI Recommendation":
-
-    st.title("🤖 AI Recommendation")
-
-    st.write(
-        "Intelligent analysis of the donation "
-        "and NGO matching result."
-    )
-
-    st.divider()
-
-    # --------------------------------------------------------
-    # CHECK IF ANALYSIS EXISTS
-    # --------------------------------------------------------
-
-    if "analysis" not in st.session_state:
-
-        st.warning(
-            "No donation has been analyzed yet."
+        return redirect(
+            url_for("login")
         )
 
-        st.info(
-            "Go to 'Create Donation' and analyze "
-            "a food donation first."
+    if session["role"] != "Donor":
+
+        return redirect(
+            url_for("ngo_dashboard")
         )
 
-    else:
+    if request.method == "POST":
 
-        result = st.session_state["analysis"]
+        food_name = request.form.get(
+            "food_name",
+            ""
+        ).strip()
 
-        ngo = st.session_state["ngo"]
-
-        all_matches = st.session_state.get(
-            "all_matches",
-            []
+        quantity_raw = request.form.get(
+            "quantity",
+            "0"
         )
 
-        donor_location = st.session_state.get(
+        preparation_time_raw = request.form.get(
+            "preparation_time",
+            ""
+        )
+
+        storage_condition = request.form.get(
+            "storage_condition",
+            ""
+        )
+
+        donor_location = request.form.get(
             "donor_location",
             "Hyderabad"
         )
 
-        # ----------------------------------------------------
-        # AI RESULT
-        # ----------------------------------------------------
+        if not food_name:
 
-        st.subheader("🧠 AI Analysis")
-
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-
-            st.metric(
-                "Pickup Priority",
-                result["priority"]
+            flash(
+                "Please enter the food name.",
+                "error"
             )
 
-        with col2:
-
-            st.metric(
-                "Decision Score",
-                result["score"]
+            return redirect(
+                url_for("create_donation")
             )
 
-        with col3:
+        try:
 
-            st.metric(
-                "Hours Since Preparation",
-                result.get(
-                    "hours_since_preparation",
-                    0
-                )
+            quantity = int(
+                quantity_raw
             )
 
-        st.divider()
+        except ValueError:
+
+            flash(
+                "Quantity must be a valid number.",
+                "error"
+            )
+
+            return redirect(
+                url_for("create_donation")
+            )
+
+        if quantity <= 0:
+
+            flash(
+                "Quantity must be greater than zero.",
+                "error"
+            )
+
+            return redirect(
+                url_for("create_donation")
+            )
 
         # ----------------------------------------------------
-        # DECISION REASONS
+        # Convert HTML time input to datetime.time
         # ----------------------------------------------------
 
-        st.subheader(
-            "📋 Decision Factors"
+        try:
+
+            preparation_time = datetime.strptime(
+                preparation_time_raw,
+                "%H:%M"
+            ).time()
+
+        except ValueError:
+
+            preparation_time = datetime.now().time()
+
+        # ----------------------------------------------------
+        # AI ANALYSIS
+        # ----------------------------------------------------
+
+        result = analyze_donation(
+            food_name,
+            quantity,
+            preparation_time,
+            storage_condition
         )
-
-        for reason in result["reasons"]:
-
-            st.write(
-                "✓",
-                reason
-            )
-
-        st.divider()
 
         # ----------------------------------------------------
         # NGO RECOMMENDATION
         # ----------------------------------------------------
 
-        st.subheader(
-            "🤝 Recommended NGO"
+        best_ngo, all_matches = recommend_ngo(
+            donor_location=donor_location,
+            quantity=quantity,
+            priority=result["priority"]
         )
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-
-            st.write(
-                "**NGO:**",
-                ngo["name"]
-            )
-
-            st.write(
-                "**Location:**",
-                ngo["location"]
-            )
-
-            st.write(
-                "**Distance:**",
-                f'{ngo["distance"]} km'
-            )
-
-        with col2:
-
-            st.write(
-                "**Capacity:**",
-                f'{ngo["capacity"]} meals'
-            )
-
-            st.write(
-                "**Current Need:**",
-                ngo["need"]
-            )
-
-            st.write(
-                "**Match Score:**",
-                f'{ngo["match_score"]}/100'
-            )
-
-        st.divider()
 
         # ----------------------------------------------------
-        # MATCH RANKING
+        # SAVE DONATION
         # ----------------------------------------------------
 
-        st.subheader(
-            "🎯 NGO Match Ranking"
+        add_donation(
+            food_name,
+            quantity,
+            preparation_time.strftime(
+                "%H:%M"
+            ),
+            storage_condition,
+            result["priority"],
+            best_ngo["name"]
         )
 
-        if all_matches:
-
-            match_df = pd.DataFrame(
-                all_matches
-            )
-
-            match_df = match_df[
-                [
-                    "name",
-                    "distance",
-                    "capacity",
-                    "need",
-                    "match_score"
-                ]
-            ]
-
-            match_df.columns = [
-                "NGO",
-                "Distance (km)",
-                "Capacity",
-                "Need",
-                "Match Score"
-            ]
-
-            st.dataframe(
-                match_df,
-                use_container_width=True,
-                hide_index=True
-            )
-
-        st.divider()
-
-        # ----------------------------------------------------
-        # DECISION FLOW
-        # ----------------------------------------------------
-
-        st.subheader(
-            "🔄 Decision Flow"
+        return render_template(
+            "create_donation.html",
+            result=result,
+            ngo=best_ngo,
+            matches=all_matches,
+            submitted=True
         )
 
-        st.write(
-            "🍱 Donation"
-            " → "
-            "🤖 AI Analysis"
-            " → "
-            "🚨 Priority"
-            " → "
-            "🤝 NGO Matching"
-            " → "
-            "🚚 Pickup"
-        )
-
-        st.divider()
-
-        st.info(
-            "Prototype Note: The current MVP uses "
-            "a transparent scoring-based intelligent "
-            "decision engine. Future versions can "
-            "integrate machine-learning models using "
-            "historical redistribution data."
-        )
-
-
-# ============================================================
-# IMPACT DASHBOARD
-# ============================================================
-
-elif page == "📊 Impact Dashboard":
-
-    st.title("📊 Impact Dashboard")
-
-    st.write(
-        "Track food donations and redistribution activity."
+    return render_template(
+        "create_donation.html",
+        submitted=False
     )
 
-    st.divider()
+
+# ============================================================
+# MY DONATIONS
+# ============================================================
+
+@app.route("/donations")
+def my_donations():
+
+    if not login_required():
+
+        return redirect(
+            url_for("login")
+        )
+
+    if session["role"] != "Donor":
+
+        return redirect(
+            url_for("ngo_dashboard")
+        )
 
     donations = get_donations()
 
-    total_donations = len(donations)
-
-    delivered = sum(
-        1
-        for donation in donations
-        if donation[7] == "Delivered"
+    return render_template(
+        "my_donations.html",
+        donations=donations
     )
-
-    pending = total_donations - delivered
-
-    rescued_meals = sum(
-        donation[2]
-        for donation in donations
-        if donation[7] == "Delivered"
-    )
-
-    # --------------------------------------------------------
-    # METRICS
-    # --------------------------------------------------------
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-
-        st.metric(
-            "🍱 Donations",
-            total_donations
-        )
-
-    with col2:
-
-        st.metric(
-            "🍽️ Meals Rescued",
-            rescued_meals
-        )
-
-    with col3:
-
-        st.metric(
-            "✅ Delivered",
-            delivered
-        )
-
-    with col4:
-
-        st.metric(
-            "⏳ Pending",
-            pending
-        )
-
-    st.divider()
-
-    # --------------------------------------------------------
-    # DONATION TABLE
-    # --------------------------------------------------------
-
-    st.subheader(
-        "📋 Donation Records"
-    )
-
-    if donations:
-
-        df = pd.DataFrame(
-            donations,
-
-            columns=[
-                "ID",
-                "Food",
-                "Quantity",
-                "Preparation Time",
-                "Storage",
-                "Priority",
-                "NGO",
-                "Status"
-            ]
-        )
-
-        st.dataframe(
-            df,
-            use_container_width=True,
-            hide_index=True
-        )
-
-        st.divider()
-
-        # ----------------------------------------------------
-        # UPDATE DELIVERY
-        # ----------------------------------------------------
-
-        st.subheader(
-            "🚚 Update Delivery Status"
-        )
-
-        donation_id = st.number_input(
-            "Donation ID",
-            min_value=1,
-            step=1
-        )
-
-        if st.button(
-            "✅ Mark as Delivered"
-        ):
-
-            mark_delivered(
-                donation_id
-            )
-
-            st.success(
-                "Donation marked as delivered!"
-            )
-
-            st.rerun()
-
-    else:
-
-        st.info(
-            "No donations available yet. "
-            "Create a donation to begin."
-        )
 
 
 # ============================================================
-# FOOTER
+# NGO DASHBOARD
 # ============================================================
 
-st.divider()
+@app.route("/ngo")
+def ngo_dashboard():
 
-st.caption(
-    "🍱 Food Rescue AI 4.0 | "
-    "AI-Powered Intelligent Food Waste Management "
-    "& Redistribution System"
+    if not login_required():
+
+        return redirect(
+            url_for("login")
+        )
+
+    if session["role"] != "NGO":
+
+        return redirect(
+            url_for("donor_dashboard")
+        )
+
+    stats = get_dashboard_stats()
+
+    return render_template(
+        "ngo_dashboard.html",
+        stats=stats,
+        user=session["user"]
+    )
+
+
+# ============================================================
+# AVAILABLE DONATIONS
+# ============================================================
+
+@app.route("/ngo/donations")
+def available_donations():
+
+    if not login_required():
+
+        return redirect(
+            url_for("login")
+        )
+
+    if session["role"] != "NGO":
+
+        return redirect(
+            url_for("donor_dashboard")
+        )
+
+    donations = get_donations()
+
+    available = [
+        donation
+        for donation in donations
+        if donation[7] == "Pending Pickup"
+    ]
+
+    return render_template(
+        "available_donations.html",
+        donations=available
+    )
+
+
+# ============================================================
+# ACCEPT DONATION
+# ============================================================
+
+@app.route(
+    "/ngo/accept/<int:donation_id>",
+    methods=["POST"]
 )
+def accept_donation(donation_id):
+
+    if not login_required():
+
+        return redirect(
+            url_for("login")
+        )
+
+    if session["role"] != "NGO":
+
+        return redirect(
+            url_for("donor_dashboard")
+        )
+
+    update_status(
+        donation_id,
+        "Accepted"
+    )
+
+    flash(
+        "Donation accepted successfully.",
+        "success"
+    )
+
+    return redirect(
+        url_for("available_donations")
+    )
+
+
+# ============================================================
+# ACTIVE DELIVERIES
+# ============================================================
+
+@app.route("/ngo/deliveries")
+def active_deliveries():
+
+    if not login_required():
+
+        return redirect(
+            url_for("login")
+        )
+
+    if session["role"] != "NGO":
+
+        return redirect(
+            url_for("donor_dashboard")
+        )
+
+    donations = get_donations()
+
+    active = [
+        donation
+        for donation in donations
+        if donation[7] in [
+            "Accepted",
+            "Picked Up"
+        ]
+    ]
+
+    return render_template(
+        "active_deliveries.html",
+        donations=active
+    )
+
+
+# ============================================================
+# PICKUP
+# ============================================================
+
+@app.route(
+    "/ngo/pickup/<int:donation_id>",
+    methods=["POST"]
+)
+def pickup_donation(donation_id):
+
+    if not login_required():
+
+        return redirect(
+            url_for("login")
+        )
+
+    if session["role"] != "NGO":
+
+        return redirect(
+            url_for("donor_dashboard")
+        )
+
+    update_status(
+        donation_id,
+        "Picked Up"
+    )
+
+    flash(
+        "Pickup recorded successfully.",
+        "success"
+    )
+
+    return redirect(
+        url_for("active_deliveries")
+    )
+
+
+# ============================================================
+# DELIVERY
+# ============================================================
+
+@app.route(
+    "/ngo/deliver/<int:donation_id>",
+    methods=["POST"]
+)
+def deliver_donation(donation_id):
+
+    if not login_required():
+
+        return redirect(
+            url_for("login")
+        )
+
+    if session["role"] != "NGO":
+
+        return redirect(
+            url_for("donor_dashboard")
+        )
+
+    mark_delivered(
+        donation_id
+    )
+
+    flash(
+        "Donation marked as delivered!",
+        "success"
+    )
+
+    return redirect(
+        url_for("active_deliveries")
+    )
+
+
+# ============================================================
+# IMPACT
+# ============================================================
+
+@app.route("/impact")
+def impact():
+
+    if not login_required():
+
+        return redirect(
+            url_for("login")
+        )
+
+    stats = get_dashboard_stats()
+
+    return render_template(
+        "impact.html",
+        stats=stats
+    )
+
+
+# ============================================================
+# HEALTH CHECK
+# ============================================================
+
+@app.route("/health")
+def health():
+
+    return {
+        "status": "healthy",
+        "application": "Food Rescue AI 4.0"
+    }
+
+
+# ============================================================
+# RUN
+# ============================================================
+
+if __name__ == "__main__":
+
+    app.run(
+        host="0.0.0.0",
+        port=int(
+            os.environ.get(
+                "PORT",
+                5000
+            )
+        ),
+        debug=True
+    )
