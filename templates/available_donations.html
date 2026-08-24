@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Available Donations</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+
+</head>
+
+<body>
+
+{% include "partials/navbar.html" %}
+
+<div class="dashboard">
+
+    <div class="page-header">
+
+        <span class="badge">
+            NGO
+        </span>
+
+        <h1>
+            Available Food 
+        </h1>
+
+        <p>
+            Review surplus food available
+            for redistribution.
+        </p>
+
+    </div>
+
+
+    {% with messages = get_flashed_messages(
+        with_categories=true
+    ) %}
+
+        {% for category, message in messages %}
+
+            <div class="alert {{ category }}">
+                {{ message }}
+            </div>
+
+        {% endfor %}
+
+    {% endwith %}
+
+
+    {% if donations %}
+
+        <div class="donation-list">
+
+            {% for donation in donations %}
+
+            <div class="donation-card">
+
+                <div class="donation-main">
+
+                    
+
+                    <div>
+
+                        <h2>
+                            {{ donation[1] }}
+                        </h2>
+
+                        <p>
+                            {{ donation[2] }} meals
+                            • {{ donation[4] }}
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="donation-info">
+
+                    <div>
+
+                        <span>
+                            PRIORITY
+                        </span>
+
+                        <strong class="
+                            priority-{{ donation[5]|lower }}
+                        ">
+
+                            {{ donation[5] }}
+
+                        </strong>
+
+                    </div>
+
+
+                    <div>
+
+                        <span>
+                            RECOMMENDED NGO
+                        </span>
+
+                        <strong>
+                            {{ donation[6] }}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                <form
+                    method="POST"
+                    action="{{ url_for(
+                        'accept_donation',
+                        donation_id=donation[0]
+                    ) }}"
+                >
+
+                    <button
+                        type="submit"
+                        class="primary-btn">
+
+                        Accept Donation →
+
+                    </button>
+
+                </form>
+
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <div class="empty-state">
+
+            <div>
+                🎉
+            </div>
+
+            <h2>
+                No Pending Donations
+            </h2>
+
+            <p>
+                New surplus food donations
+                will appear here.
+            </p>
+
+        </div>
+
+    {% endif %}
+
+</div>
+
+</body>
+
+</html>
