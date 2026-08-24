@@ -1,0 +1,61 @@
+<nav class="navbar">
+
+    <a href="{{ url_for('home') }}"
+       class="brand">
+
+        
+
+        Food Rescue
+        <strong>AI 4.0</strong>
+
+    </a>
+
+
+    <div class="nav-links">
+
+        {% if session.get("role") == "Donor" %}
+
+            <a href="{{ url_for('donor_dashboard') }}">
+                Dashboard
+            </a>
+
+            <a href="{{ url_for('create_donation') }}">
+                Create Donation
+            </a>
+
+            <a href="{{ url_for('my_donations') }}">
+                My Donations
+            </a>
+
+        {% elif session.get("role") == "NGO" %}
+
+            <a href="{{ url_for('ngo_dashboard') }}">
+                Dashboard
+            </a>
+
+            <a href="{{ url_for('available_donations') }}">
+                Donations
+            </a>
+
+            <a href="{{ url_for('active_deliveries') }}">
+                Deliveries
+            </a>
+
+        {% endif %}
+
+
+        <a href="{{ url_for('impact') }}">
+            Impact
+        </a>
+
+
+        <a href="{{ url_for('logout') }}"
+           class="logout-link">
+
+            Logout
+
+        </a>
+
+    </div>
+
+</nav>
